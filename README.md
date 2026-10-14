@@ -44,7 +44,7 @@ cd expense-tracker
 npm install
 ```
 
-3. Configure Environment Variables
+### 3. Configure Environment Variables
  Create a .env.local file in the root directory and add your Firebase configuration credentials:
 ```Code snippet
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
@@ -55,7 +55,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
-4. Run the Development Server
+### 4. Run the Development Server
 ```Bash
 npm run dev
 ```

@@ -59,3 +59,12 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```Bash
 npm run dev
 ```
+###  Build & Production
+To create an optimized production build, 
+run:
+```bash
+npm run build
+```
+
+### 📄 License
+Distributed under the MIT License. See LICENSE for more information.

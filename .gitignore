@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Next.js build/export output
+.next/
+out/
+
+# Local environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Firebase local state/debug logs
+.firebase/
+.firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

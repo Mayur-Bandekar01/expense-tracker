@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020408" />
+      <stop offset="100%" stop-color="#0a1128" />
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd700" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <!-- Background circle with dark abyss gradient -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="#3b82f6" stroke-width="8" />
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#cyanGrad)" stroke-width="10" stroke-dasharray="12 8" />
+  <!-- Rupee Symbol with Holographic Glow -->
+  <text x="256" y="330" font-family="'Rajdhani', 'Inter', system-ui, sans-serif" font-size="240" font-weight="900" fill="url(#goldGrad)" text-anchor="middle">₹</text>
+  <!-- Mana Core spark -->
+  <circle cx="370" cy="140" r="18" fill="#00f2fe" />
+</svg>

@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f1f5f9;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-active: #6366f1;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --color-primary: #6366f1;
+  --color-lavender: #8b5cf6;
+  --color-income: #10b981;
+  --color-expense: #f43f5e;
+}
+
+.dark {
+  --bg-app: #0b0f17;
+  --bg-card: #131926;
+  --bg-card-subtle: #1c2436;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-active: #818cf8;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --color-primary: #818cf8;
+  --color-lavender: #a78bfa;
+  --color-income: #34d399;
+  --color-expense: #fb7185;
+}
+
+/* ── Apple iOS Minimalist Baseline (Light & Dark) ───────────── */
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-inter);
+  min-height: 100vh;
+  overflow-x: hidden;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.03) 0%, transparent 70%);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background-color: #0b0f17;
+  color: #f8fafc;
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.07) 0%, transparent 70%);
+}
+
+/* ── Card Components ─────────────────────────────────────────── */
+.surface-card,
+.holo-panel {
+  position: relative;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 4px 14px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 1.25rem; /* 20px */
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.2s ease;
+}
+
+.surface-card:hover,
+.holo-panel:hover {
+  border-color: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 8px 24px 0 rgba(0, 0, 0, 0.03);
+}
+
+.dark .surface-card,
+.dark .holo-panel {
+  background-color: #131926;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.35);
+}
+
+.dark .surface-card:hover,
+.dark .holo-panel:hover {
+  border-color: rgba(129, 140, 248, 0.25);
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Backward compatibility for previous classnames */
+.holo-panel {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 4px 14px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 1.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Backward compatibility for previous classnames */
+.holo-panel {
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 4px 14px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 1.25rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hud-brackets::before,
+.hud-brackets::after,
+.water-hud::before,
+.water-hud::after,
+.sun-hud::before,
+.sun-hud::after,
+.thunder-hud::before,
+.thunder-hud::after,
+.bounty-hud::before,
+.bounty-hud::after,
+.scanlines-overlay {
+  display: none !important;
+}
+
+/* ── Accessible Focus States ─────────────────────────────────── */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* ── Minimal iOS-Style Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
+}
+
+/* ── Reduced Motion Accessibility ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

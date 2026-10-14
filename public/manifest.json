@@ -1,0 +1,22 @@
+{
+  "name": "Paisa Pulse — Expense Tracker",
+  "short_name": "PaisaPulse",
+  "description": "Modern personal finance and expense tracker with clean analytics and budgets",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

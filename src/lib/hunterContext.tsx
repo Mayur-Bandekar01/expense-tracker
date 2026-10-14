@@ -29,6 +29,7 @@ import {
   deleteBudgetRune as fsDeleteRune,
   watchBudgetRune as fsWatchBudgetRune,
   setBudgetRune as fsSetBudgetRune,
+  deleteMonthlyBudget as fsDeleteMonthlyBudget,
   watchPerpetualPacts,
   savePerpetualPact as fsSavePact,
   deletePerpetualPact as fsDeletePact,
@@ -48,7 +49,6 @@ import {
   setSystemAudioMuted,
 } from "./audio";
 
-// Storage keys for guest / offline mode
 const STORAGE_KEYS = {
   TRANSACTIONS: "paisa_pulse_quests_v2",
   GOALS: "paisa_pulse_bounties_v2",
@@ -70,7 +70,7 @@ export interface HunterVitals {
   level: number;
   currentExp: number;
   maxExp: number;
-  vitalityRatio: number; // 0-100% savings rate
+  vitalityRatio: number;
   dailyLoginStreak: number;
   netGold: number;
   totalInflow: number;
@@ -97,32 +97,26 @@ export interface HunterContextType {
   animeAccents: boolean;
   toggleAnimeAccents: () => void;
 
-  // Quest methods
   addTransaction: (tx: Partial<Transaction>) => Promise<string>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
 
-  // Bounty methods
   addGoal: (goal: Partial<Goal>) => Promise<string>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   depositToGoal: (goalId: string, amount: number, note?: string) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
 
-  // Rune methods (Budgets)
   saveRune: (rune: Partial<CategoryBudgetRune>) => Promise<void>;
   deleteRune: (id: string) => Promise<void>;
 
-  // Sphere methods
   saveSphere: (sphere: Partial<CategorySphere>) => Promise<void>;
   deleteSphere: (id: string) => Promise<void>;
 
-  // Pact methods
   savePact: (pact: Partial<PerpetualPact>) => Promise<void>;
   togglePact: (id: string) => Promise<void>;
   deletePact: (id: string, wipeTransactions?: boolean) => Promise<void>;
   executePact: (pact: PerpetualPact | string) => Promise<string>;
 
-  // Utility
   resetToDemoData: () => void;
 }
 
@@ -194,7 +188,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
   const [authLoaded, setAuthLoaded] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
 
-  // Core Data States initialized with clean empty records
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [runes, setRunes] = useState<CategoryBudgetRune[]>([]);
@@ -205,7 +198,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
   const [animeAccents, setAnimeAccents] = useState<boolean>(true);
   const [storageLoaded, setStorageLoaded] = useState<boolean>(false);
 
-  // Sync preferences and stored guest data from localStorage on client mount (after hydration)
   useEffect(() => {
     setAudioMuted(isSystemAudioMuted());
     if (typeof window !== "undefined") {
@@ -225,34 +217,13 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         const storedSpheres = sanitizeCategorySpheres(loadFromStorage(spheresKey, DEFAULT_CATEGORIES));
         const storedPacts = loadFromStorage<PerpetualPact[]>(pactsKey, []);
 
-        // Filter out legacy mock demo IDs and orphan test recharge records requested for removal
         const isLegacyDemoId = (id: string | undefined, prefix: string) => {
           if (!id) return false;
           const match = id.match(new RegExp(`^${prefix}-(\\d+)$`));
           return match ? match[1].length < 8 : false;
         };
 
-        const isRechargeTransaction = (t: Transaction | undefined | null) => {
-          if (!t) return false;
-          const combined = `${t.merchant || ""} ${t.note || ""} ${t.category || ""}`.toLowerCase();
-          return combined.includes("recharge");
-        };
-
-        const rechargeRecords = (storedTx || []).filter(isRechargeTransaction);
-        const cleanTx = (storedTx || []).filter(
-          (t) => t && !isLegacyDemoId(t.id, "tx") && !isRechargeTransaction(t)
-        );
-
-        if (rechargeRecords.length > 0) {
-          saveToStorage(txKey, cleanTx);
-          saveToStorage(STORAGE_KEYS.TRANSACTIONS, cleanTx);
-          if (activeUid && activeUid !== "guest") {
-            rechargeRecords.forEach((rx) => {
-              fsDeleteTransaction(activeUid, rx.id).catch(() => {});
-            });
-          }
-        }
-
+        const cleanTx = (storedTx || []).filter((t) => t && !isLegacyDemoId(t.id, "tx"));
         const cleanGoals = (storedGoals || []).filter((g) => g && !isLegacyDemoId(g.id, "goal"));
         const cleanRunes = (storedRunes || []).filter((r) => r && !isLegacyDemoId(r.id, "rune"));
         const cleanPacts = (storedPacts || []).filter((p) => p && !isLegacyDemoId(p.id, "pact"));
@@ -260,9 +231,9 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         setTransactions(cleanTx);
         setGoals(cleanGoals);
         setRunes(cleanRunes);
-        if (typeof storedMonthlyBudget === "number" && storedMonthlyBudget > 0) {
-          setMonthlyBudget(storedMonthlyBudget);
-        }
+        setMonthlyBudget(
+          typeof storedMonthlyBudget === "number" && storedMonthlyBudget > 0 ? storedMonthlyBudget : null
+        );
         setSpheres(storedSpheres);
         setPacts(cleanPacts);
       } catch (_e) {}
@@ -292,7 +263,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Listen to Auth State with fallback timeout for hosted deployments
   useEffect(() => {
     let resolved = false;
     const fallbackTimer = setTimeout(() => {
@@ -308,7 +278,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       setAuthLoaded(true);
 
       if (!currUser) {
-        // Clear in-memory financial data when signed out to prevent stale data display on login screen
         setTransactions([]);
         setGoals([]);
         setRunes([]);
@@ -318,28 +287,19 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Immediately hydrate state from the user's local cache if available on this device
       try {
         const uKey = (k: string) => getUserStorageKey(currUser.uid, k);
         const cachedTx = loadFromStorage<Transaction[] | null>(uKey(STORAGE_KEYS.TRANSACTIONS), null);
-        if (Array.isArray(cachedTx) && cachedTx.length > 0) {
-          setTransactions(cachedTx);
-        }
+        if (Array.isArray(cachedTx)) setTransactions(cachedTx);
 
         const cachedGoals = loadFromStorage<Goal[] | null>(uKey(STORAGE_KEYS.GOALS), null);
-        if (Array.isArray(cachedGoals) && cachedGoals.length > 0) {
-          setGoals(cachedGoals);
-        }
+        if (Array.isArray(cachedGoals)) setGoals(cachedGoals);
 
         const cachedRunes = loadFromStorage<CategoryBudgetRune[] | null>(uKey(STORAGE_KEYS.RUNES), null);
-        if (Array.isArray(cachedRunes) && cachedRunes.length > 0) {
-          setRunes(cachedRunes);
-        }
+        if (Array.isArray(cachedRunes)) setRunes(cachedRunes);
 
         const cachedBudget = loadFromStorage<number | null>(uKey(STORAGE_KEYS.MONTHLY_BUDGET), null);
-        if (typeof cachedBudget === "number" && cachedBudget > 0) {
-          setMonthlyBudget(cachedBudget);
-        }
+        setMonthlyBudget(typeof cachedBudget === "number" && cachedBudget > 0 ? cachedBudget : null);
 
         const cachedSpheres = loadFromStorage<CategorySphere[] | null>(uKey(STORAGE_KEYS.SPHERES), null);
         if (Array.isArray(cachedSpheres) && cachedSpheres.length > 0) {
@@ -347,9 +307,7 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         }
 
         const cachedPacts = loadFromStorage<PerpetualPact[] | null>(uKey(STORAGE_KEYS.PACTS), null);
-        if (Array.isArray(cachedPacts) && cachedPacts.length > 0) {
-          setPacts(cachedPacts);
-        }
+        if (Array.isArray(cachedPacts)) setPacts(cachedPacts);
       } catch (_e) {}
     });
 
@@ -359,7 +317,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Setup Firestore real-time listeners and one-time initial guest migration when user is authenticated
   useEffect(() => {
     if (!user) return;
 
@@ -367,7 +324,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     const uid = user.uid;
     const uKey = (k: string) => getUserStorageKey(uid, k);
 
-    // One-time migration of unauthenticated guest records to user's Cloud Firestore
     const migratedKey = getUserStorageKey(uid, "paisa_pulse_migrated_v2");
     const alreadyMigrated = loadFromStorage(migratedKey, false);
     if (!alreadyMigrated) {
@@ -398,24 +354,7 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     unsubs.push(
       watchTransactions(uid, (fsTxs) => {
         if (!Array.isArray(fsTxs)) return;
-        const purgeList = fsTxs.filter((t) => {
-          if (!t) return false;
-          const combined = `${t.merchant || ""} ${t.note || ""} ${t.category || ""}`.toLowerCase();
-          return combined.includes("recharge");
-        });
-
-        if (purgeList.length > 0) {
-          purgeList.forEach((rx) => {
-            fsDeleteTransaction(uid, rx.id).catch(() => {});
-          });
-        }
-
-        const activeTxs = fsTxs.filter((t) => {
-          if (!t) return false;
-          const combined = `${t.merchant || ""} ${t.note || ""} ${t.category || ""}`.toLowerCase();
-          return !combined.includes("recharge");
-        });
-
+        const activeTxs = fsTxs.filter(Boolean);
         setTransactions(activeTxs);
         saveToStorage(uKey(STORAGE_KEYS.TRANSACTIONS), activeTxs);
       })
@@ -472,6 +411,8 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         }
+        setMonthlyBudget(null);
+        saveToStorage(uKey(STORAGE_KEYS.MONTHLY_BUDGET), null);
       })
     );
 
@@ -480,7 +421,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  // Safe storage sync: Only sync when storageLoaded is true (includes empty arrays on intentional deletion)
   useEffect(() => {
     if (!storageLoaded) return;
     const uid = user?.uid || getCurrentUser()?.uid;
@@ -519,7 +459,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), pacts);
   }, [pacts, user, storageLoaded]);
 
-  // Compute Hunter Vitals & RPG Level
   const vitals = useMemo<HunterVitals>(() => {
     const totalInflow = transactions
       .filter((t) => t.type === "income")
@@ -628,7 +567,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       const activeUser = user || getCurrentUser();
       const uid = activeUser?.uid;
 
-      // 1. Immediately wipe from in-memory state and all storage keys
       setTransactions((prev) => {
         const next = (prev || []).filter((t) => t && t.id !== id);
         if (uid) {
@@ -639,7 +577,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       });
       playDeleteSound();
 
-      // 2. Wipe completely from Cloud Firestore database
       if (activeUser && uid) {
         try {
           await fsDeleteTransaction(uid, id);
@@ -801,13 +738,17 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
 
       if (activeUser) {
         try {
-          await fsSetBudgetRune(activeUser.uid, currentYM, {
-            totalBudget: validAmount || 0,
-            allocatedManaGold: validAmount || 0,
-            monthYear: currentYM,
-            currency: "INR",
-            updatedAt: new Date().toISOString(),
-          } as any);
+          if (validAmount === null) {
+            await fsDeleteMonthlyBudget(activeUser.uid, currentYM);
+          } else {
+            await fsSetBudgetRune(activeUser.uid, currentYM, {
+              totalBudget: validAmount,
+              allocatedManaGold: validAmount,
+              monthYear: currentYM,
+              currency: "INR",
+              updatedAt: new Date().toISOString(),
+            } as any);
+          }
         } catch (err) {
           console.error("Firestore updateMonthlyBudget error:", err);
         }
@@ -1053,7 +994,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       const uid = activeUser?.uid;
       const targetPact = pacts.find((p) => p.id === id);
 
-      // 1. Remove pact from state & storage
       setPacts((prev) => {
         const next = (prev || []).filter((p) => p && p.id !== id);
         const key = getUserStorageKey(uid, STORAGE_KEYS.PACTS);
@@ -1063,7 +1003,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       });
       playDeleteSound();
 
-      // 2. Delete pact from Cloud Firestore
       if (activeUser && uid) {
         try {
           await fsDeletePact(uid, id);
@@ -1072,7 +1011,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 3. Completely wipe all transactions associated with this recurring bill
       if (wipeTransactions && targetPact) {
         const titleLower = (targetPact.pactTitle || "").trim().toLowerCase();
         let wipedTxs: Transaction[] = [];
@@ -1117,7 +1055,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
 
       const cost = Number(pact.goldCost) || 0;
 
-      // Record transaction for this pact
       const txId = await addTransaction({
         amount: cost,
         type: "expense",
@@ -1128,7 +1065,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         isRecurring: true,
       });
 
-      // Safely parse base date without double T00:00:00
       let baseDate: Date;
       if (pact.nextInvocationDate) {
         const raw = String(pact.nextInvocationDate).trim();
@@ -1148,7 +1084,7 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
         baseDate.setFullYear(baseDate.getFullYear() + 1);
       } else {
         const targetDay = baseDate.getDate();
-        baseDate.setDate(1); // Avoid overflow before month shift
+        baseDate.setDate(1);
         baseDate.setMonth(baseDate.getMonth() + 1);
         const maxDaysInMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate();
         baseDate.setDate(Math.min(targetDay, maxDaysInMonth));
@@ -1170,6 +1106,7 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
   const resetToDemoData = useCallback(async () => {
     const activeUser = user || getCurrentUser();
     const uid = activeUser?.uid;
+    const currentYM = getTodayLocalDate().slice(0, 7);
 
     const currentTxs = [...transactions];
     const currentGoals = [...goals];
@@ -1187,7 +1124,6 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       STORAGE_KEYS.TRANSACTIONS,
       STORAGE_KEYS.GOALS,
       STORAGE_KEYS.RUNES,
-      STORAGE_KEYS.MONTHLY_BUDGET,
       STORAGE_KEYS.SPHERES,
       STORAGE_KEYS.PACTS,
     ];
@@ -1195,10 +1131,12 @@ export function HunterProvider({ children }: { children: React.ReactNode }) {
       saveToStorage(getUserStorageKey(uid, k), []);
       saveToStorage(k, []);
     });
+    saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.MONTHLY_BUDGET), null);
+    saveToStorage(STORAGE_KEYS.MONTHLY_BUDGET, null);
 
-    // If signed in, delete documents from Cloud Firestore
     if (activeUser) {
       try {
+        await fsDeleteMonthlyBudget(activeUser.uid, currentYM).catch(() => {});
         for (const tx of currentTxs) {
           await fsDeleteTransaction(activeUser.uid, tx.id).catch(() => {});
         }

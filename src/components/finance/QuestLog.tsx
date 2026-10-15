@@ -17,9 +17,6 @@ export interface QuestCardProps {
   onDelete?: (id: string) => void;
 }
 
-/**
- * Determine difficulty rank based on transaction amount
- */
 export function calculateQuestDifficulty(amount: number): QuestDifficulty {
   if (amount >= 50000) return "S-RANK";
   if (amount >= 20000) return "A-RANK";
@@ -94,9 +91,6 @@ function getCategoryIcon(category: string, isIncome: boolean) {
   );
 }
 
-/**
- * Single Transaction Row Component (Apple Wallet Style)
- */
 export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
   const { animeAccents } = useHunterSystem();
   const isIncome = transaction.type === "income";
@@ -107,7 +101,6 @@ export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
       onClick={() => onClick?.(transaction)}
       className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-card hover:shadow-md"
     >
-      {/* Left Column: Icon + Description */}
       <div className="flex items-center gap-3.5 min-w-0">
         <div
           className={cn(
@@ -140,11 +133,15 @@ export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-            <span className="text-slate-600 dark:text-slate-300 font-medium">{transaction.category}</span>
+            <span className="text-slate-600 dark:text-slate-300 font-medium">
+              {transaction.category}
+            </span>
             {transaction.note && transaction.merchant && (
               <>
                 <span className="text-slate-300 dark:text-slate-600">·</span>
-                <span className="truncate text-slate-400 dark:text-slate-400">{transaction.note}</span>
+                <span className="truncate text-slate-400 dark:text-slate-400">
+                  {transaction.note}
+                </span>
               </>
             )}
             {transaction.method && (
@@ -159,13 +156,14 @@ export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
         </div>
       </div>
 
-      {/* Right Column: Amount & Actions */}
       <div className="flex items-center gap-3 shrink-0 text-right">
         <div>
           <div
             className={cn(
               "font-numbers text-base sm:text-lg font-bold tracking-tight tabular-nums",
-              isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
+              isIncome
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-900 dark:text-white"
             )}
           >
             {isIncome ? "+" : "−"}
@@ -176,7 +174,6 @@ export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
           </span>
         </div>
 
-        {/* Action icons on hover (visible by default on mobile touchscreens) */}
         <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           {onDelete && (
             <button
@@ -189,7 +186,12 @@ export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
               className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
             </button>
           )}
@@ -206,23 +208,22 @@ export interface QuestLogProps {
   onNewQuest?: () => void;
 }
 
-/**
- * Main Transactions Ledger Component
- */
 export function QuestLog({
   transactions,
   onSelectTransaction,
   onDeleteTransaction,
   onNewQuest,
 }: QuestLogProps) {
-  const { animeAccents } = useHunterSystem();
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc">("date-desc");
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedMethod, setSelectedMethod] = useState("all");
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc">(
+    "date-desc"
+  );
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
 
-  // Derive unique categories
   const categories = useMemo(() => {
     const set = new Set<string>();
     (transactions || []).forEach((t) => {
@@ -231,11 +232,36 @@ export function QuestLog({
     return Array.from(set).sort();
   }, [transactions]);
 
-  // Filter transactions
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    (transactions || []).forEach((t) => {
+      if (t.date && t.date.length >= 7) {
+        set.add(t.date.slice(0, 7));
+      }
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [transactions]);
+
+  const paymentMethods = useMemo(() => {
+    const set = new Set<string>(["UPI", "Card", "Net Banking", "Cash"]);
+    (transactions || []).forEach((t) => {
+      if (t.method) set.add(t.method);
+    });
+    return Array.from(set);
+  }, [transactions]);
+
+  const formatMonthOption = (ym: string) => {
+    const [y, m] = ym.split("-").map(Number);
+    if (!y || !m) return ym;
+    return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "short", year: "numeric" });
+  };
+
   const filteredTransactions = useMemo(() => {
     return (transactions || []).filter((tx) => {
       if (filterType !== "all" && tx.type !== filterType) return false;
       if (selectedCategory !== "all" && tx.category !== selectedCategory) return false;
+      if (selectedMonth !== "all" && !(tx.date || "").startsWith(selectedMonth)) return false;
+      if (selectedMethod !== "all" && tx.method !== selectedMethod) return false;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesNote = tx.note?.toLowerCase().includes(query);
@@ -246,9 +272,8 @@ export function QuestLog({
       }
       return true;
     });
-  }, [transactions, filterType, selectedCategory, searchQuery]);
+  }, [transactions, filterType, selectedCategory, selectedMonth, selectedMethod, searchQuery]);
 
-  // Sort transactions
   const sortedTransactions = useMemo(() => {
     return [...filteredTransactions].sort((a, b) => {
       if (sortBy === "date-desc") return (b.date || "").localeCompare(a.date || "");
@@ -259,7 +284,6 @@ export function QuestLog({
     });
   }, [filteredTransactions, sortBy]);
 
-  // Financial aggregates
   const stats = useMemo(() => {
     const list = filteredTransactions || [];
     const inflow = list
@@ -276,7 +300,6 @@ export function QuestLog({
     };
   }, [filteredTransactions]);
 
-  // Group by date
   const groupedByDate = useMemo(() => {
     const map = new Map<string, Transaction[]>();
     sortedTransactions.forEach((tx) => {
@@ -287,45 +310,74 @@ export function QuestLog({
     return Array.from(map.entries());
   }, [sortedTransactions]);
 
+  const hasActiveFilters =
+    filterType !== "all" ||
+    selectedCategory !== "all" ||
+    selectedMonth !== "all" ||
+    selectedMethod !== "all" ||
+    Boolean(searchQuery.trim());
+
+  const handleResetFilters = () => {
+    setFilterType("all");
+    setSelectedCategory("all");
+    setSelectedMonth("all");
+    setSelectedMethod("all");
+    setSearchQuery("");
+  };
+
   return (
     <div className="space-y-6">
-      {/* ── KPI AGGREGATE STRIP ────────────────────────────────────── */}
+      {/* KPI AGGREGATE STRIP */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        <Card variant="card" className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="card"
+          className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
-            Total Transactions
+            Matching Records
           </span>
           <span className="text-xl font-bold font-numbers text-slate-900 dark:text-white mt-1 block">
             {stats.count}
           </span>
         </Card>
 
-        <Card variant="card" className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="card"
+          className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 block">
-            Total Inflow
+            Period Inflow
           </span>
           <span className="text-xl font-bold font-numbers text-emerald-600 dark:text-emerald-400 mt-1 block">
             +{formatINR(stats.inflow)}
           </span>
         </Card>
 
-        <Card variant="card" className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="card"
+          className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
-            Total Outflow
+            Period Outflow
           </span>
           <span className="text-xl font-bold font-numbers text-slate-900 dark:text-white mt-1 block">
             −{formatINR(stats.outflow)}
           </span>
         </Card>
 
-        <Card variant="card" className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="card"
+          className="p-4 rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
             Net Cash Flow
           </span>
           <span
             className={cn(
               "text-xl font-bold font-numbers mt-1 block",
-              stats.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"
+              stats.net >= 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-500 dark:text-rose-400"
             )}
           >
             {stats.net >= 0 ? "+" : "−"}
@@ -334,14 +386,21 @@ export function QuestLog({
         </Card>
       </div>
 
-      {/* ── SEARCH & FILTER CONTROLS ───────────────────────────────── */}
-      <Card variant="card" className="p-4 sm:p-5 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5">
+      {/* SEARCH & FILTER CONTROLS */}
+      <Card
+        variant="card"
+        className="p-4 sm:p-5 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5"
+      >
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          {/* Search Input */}
           <div className="relative flex-1">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </span>
             <input
@@ -362,7 +421,6 @@ export function QuestLog({
             )}
           </div>
 
-          {/* Type Switcher Pills (Grid on Mobile, Flex on Desktop) */}
           <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 shrink-0 w-full sm:w-auto">
             <button
               type="button"
@@ -405,14 +463,34 @@ export function QuestLog({
           </div>
         </div>
 
-        {/* Secondary Filters: Category & Sort (Equal 2 columns on mobile) */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between gap-2.5 sm:gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">Category:</span>
+        {/* Secondary Filters: Month, Category, Method & Sort */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Month:
+            </span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 cursor-pointer truncate"
+            >
+              <option value="all">All Months</option>
+              {availableMonths.map((ym) => (
+                <option key={ym} value={ym}>
+                  {formatMonthOption(ym)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Category:
+            </span>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all cursor-pointer truncate"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 cursor-pointer truncate"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -423,12 +501,43 @@ export function QuestLog({
             </select>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-1 sm:gap-2 min-w-0">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">Sort:</span>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Payment Method:
+            </span>
+            <select
+              value={selectedMethod}
+              onChange={(e) => setSelectedMethod(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 cursor-pointer truncate"
+            >
+              <option value="all">All Methods</option>
+              {paymentMethods.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                Sort By:
+              </span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all cursor-pointer truncate"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 cursor-pointer truncate"
             >
               <option value="date-desc">Newest First</option>
               <option value="date-asc">Oldest First</option>
@@ -439,18 +548,22 @@ export function QuestLog({
         </div>
       </Card>
 
-      {/* ── TRANSACTIONS LIST ──────────────────────────────────────── */}
+      {/* TRANSACTIONS LIST */}
       {filteredTransactions.length === 0 ? (
         <EmptyState
           icon="🍡"
           title="No Transactions Found"
           description={
-            searchQuery || filterType !== "all" || selectedCategory !== "all"
-              ? "Try adjusting your filters or search terms to locate transactions."
+            hasActiveFilters
+              ? "No transactions match your current filter combination."
               : "No expenses or income logged yet. Record your first transaction to get started."
           }
           action={
-            onNewQuest ? (
+            hasActiveFilters ? (
+              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                Clear All Filters
+              </Button>
+            ) : onNewQuest ? (
               <Button variant="primary" size="sm" onClick={onNewQuest}>
                 Add Transaction
               </Button>
@@ -461,7 +574,6 @@ export function QuestLog({
         <div className="space-y-6">
           {groupedByDate.map(([date, items]) => (
             <div key={date} className="space-y-2.5">
-              {/* Date Header Pill */}
               <div className="flex items-center justify-between px-1.5">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
@@ -472,7 +584,6 @@ export function QuestLog({
                 </span>
               </div>
 
-              {/* Day Items */}
               <div className="space-y-2">
                 {items.map((tx) => (
                   <QuestCard
@@ -488,7 +599,7 @@ export function QuestLog({
         </div>
       )}
 
-      {/* In-App Confirmation Modal for Deleting Transaction */}
+      {/* Confirmation Modal for Deleting Transaction */}
       <Modal
         isOpen={Boolean(deletingTx)}
         onClose={() => setDeletingTx(null)}

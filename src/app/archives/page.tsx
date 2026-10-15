@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { signInWithGoogle, signOutUser } from "../../lib/auth";
-import { exportToCSV } from "../../lib/export";
-import { parseSMS } from "../../lib/smsParser";
+import React, { useState, useRef } from "react";
+import { signOutUser } from "../../lib/auth";
+import { exportToCSV, parseCSVTransactions } from "../../lib/export";
+import { parseSMS, ParsedSMSResult } from "../../lib/smsParser";
 import { useHunterSystem } from "../../lib/hunterContext";
 import { getTodayLocalDate } from "../../lib/dateUtils";
 import { useTheme } from "../../lib/themeContext";
@@ -25,24 +25,15 @@ export default function HunterArchivesPage() {
   } = useHunterSystem();
 
   const { theme } = useTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [authLoading, setAuthLoading] = useState(false);
   const [smsInput, setSmsInput] = useState("");
-  const [parsedData, setParsedData] = useState<ReturnType<typeof parseSMS> | null>(null);
+  const [parsedBatch, setParsedBatch] = useState<ParsedSMSResult[]>([]);
   const [smsResult, setSmsResult] = useState<string | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
-
-  const handleSignIn = async () => {
-    setAuthLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      console.error("Sign in error:", err);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
+  const [importingCSV, setImportingCSV] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -62,36 +53,99 @@ export default function HunterArchivesPage() {
     setTimeout(() => setExportNotice(null), 4000);
   };
 
+  const handleImportCSVFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportingCSV(true);
+    try {
+      const text = await file.text();
+      const parsedRows = parseCSVTransactions(text);
+      if (parsedRows.length === 0) {
+        alert("No valid transactions found in the selected CSV file.");
+        return;
+      }
+
+      for (const item of parsedRows) {
+        await addTransaction(item);
+      }
+
+      setExportNotice(`Restored ${parsedRows.length} transactions from CSV backup!`);
+      setTimeout(() => setExportNotice(null), 5000);
+    } catch (err) {
+      console.error("CSV import error:", err);
+      alert("Failed to read CSV file. Please ensure it matches the Paisa Pulse export format.");
+    } finally {
+      setImportingCSV(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleDecodeSMS = () => {
     if (!smsInput.trim()) return;
-    const parsed = parseSMS(smsInput);
-    if (parsed) {
-      setParsedData(parsed);
-      setSmsResult(
-        `✓ Extracted ₹${parsed.amount.toLocaleString("en-IN")} · ${parsed.merchant || "Merchant"} (${(parsed.type || "expense").toUpperCase()}) · Category: ${parsed.category || "General"}`
-      );
+
+    // Split by lines to support both single SMS and multi-line batch SMS pasting
+    const lines = smsInput
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length >= 8);
+
+    const batch: ParsedSMSResult[] = [];
+    for (const line of lines) {
+      const p = parseSMS(line);
+      if (p) batch.push(p);
+    }
+
+    if (batch.length === 0) {
+      const single = parseSMS(smsInput);
+      if (single) batch.push(single);
+    }
+
+    if (batch.length > 0) {
+      setParsedBatch(batch);
+      if (batch.length === 1) {
+        const p = batch[0];
+        setSmsResult(
+          `✓ Extracted ₹${p.amount.toLocaleString("en-IN")} · ${p.merchant || "Merchant"} (${(
+            p.type || "expense"
+          ).toUpperCase()}) · Category: ${p.category || "General"}`
+        );
+      } else {
+        const totalAmt = batch.reduce((sum, item) => sum + item.amount, 0);
+        setSmsResult(
+          `✓ Decoded ${batch.length} SMS messages (Total: ₹${totalAmt.toLocaleString(
+            "en-IN"
+          )}). Ready to import all!`
+        );
+      }
     } else {
-      setParsedData(null);
+      setParsedBatch([]);
       setSmsResult("✕ Unable to decode message format. Please check text.");
     }
   };
 
   const handleAddParsedQuest = async () => {
-    if (!parsedData) return;
-    await addTransaction({
-      amount: parsedData.amount,
-      type: parsedData.type,
-      category: parsedData.category || "Provisions & Dining",
-      note: parsedData.merchant ? `Payment to ${parsedData.merchant}` : "SMS Parsed Transaction",
-      merchant: parsedData.merchant || "",
-      date: parsedData.date || getTodayLocalDate(),
-      time: new Date().toTimeString().slice(0, 5),
-      method: "UPI",
-      isRecurring: false,
-    });
-    setAddedNotice("Transaction recorded into your ledger!");
+    if (parsedBatch.length === 0) return;
+    for (const item of parsedBatch) {
+      await addTransaction({
+        amount: item.amount,
+        type: item.type,
+        category: item.category || "Dining & Food",
+        note: item.merchant ? `Payment to ${item.merchant}` : "SMS Parsed Transaction",
+        merchant: item.merchant || "",
+        date: item.date || getTodayLocalDate(),
+        time: new Date().toTimeString().slice(0, 5),
+        method: "UPI",
+        isRecurring: false,
+      });
+    }
+    setAddedNotice(
+      `Recorded ${parsedBatch.length} ${
+        parsedBatch.length === 1 ? "transaction" : "transactions"
+      } into your ledger!`
+    );
     setSmsInput("");
-    setParsedData(null);
+    setParsedBatch([]);
     setSmsResult(null);
     setTimeout(() => setAddedNotice(null), 4000);
   };
@@ -99,11 +153,11 @@ export default function HunterArchivesPage() {
   const handleResetLedger = () => {
     if (
       window.confirm(
-        "Clear local records and reset to an empty ledger? This will clear locally cached records."
+        "Clear all records and reset to an empty ledger? This will clear locally cached and cloud records."
       )
     ) {
       resetToDemoData();
-      alert("Local records cleared. Ledger is now empty and ready for your real data.");
+      alert("Records cleared. Ledger is now empty and ready for your real data.");
     }
   };
 
@@ -122,7 +176,10 @@ export default function HunterArchivesPage() {
 
       <div className="space-y-5 max-w-4xl">
         {/* 1. Account & Cloud Sync */}
-        <Card variant="default" className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="default"
+          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -134,10 +191,16 @@ export default function HunterArchivesPage() {
                 </Badge>
               </div>
 
-              <h3 suppressHydrationWarning className="text-base font-semibold text-slate-900 dark:text-white">
+              <h3
+                suppressHydrationWarning
+                className="text-base font-semibold text-slate-900 dark:text-white"
+              >
                 {user ? user.displayName || user.email : "Authenticated Account"}
               </h3>
-              <p suppressHydrationWarning className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-lg leading-relaxed">
+              <p
+                suppressHydrationWarning
+                className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-lg leading-relaxed"
+              >
                 {user
                   ? `Authenticated as ${user.email}. Real-time multi-device cloud synchronization is active via Firebase Firestore.`
                   : "Signed in to Paisa Pulse with Google. Cloud synchronization active."}
@@ -161,20 +224,27 @@ export default function HunterArchivesPage() {
         </Card>
 
         {/* 2. Appearance & Preferences */}
-        <Card variant="default" className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        <Card
+          variant="default"
+          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-4">
             Preferences & Appearance
           </span>
 
           <div className="space-y-4 divide-y divide-slate-100 dark:divide-slate-800">
-            {/* Companion Toggle (iOS Switch) */}
+            {/* Companion Toggle */}
             <div className="flex items-center justify-between gap-4 pt-1">
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
                     Mochi Financial Companion
                   </h4>
-                  <Badge variant={animeAccents ? "brand" : "neutral"} size="sm" suppressHydrationWarning>
+                  <Badge
+                    variant={animeAccents ? "brand" : "neutral"}
+                    size="sm"
+                    suppressHydrationWarning
+                  >
                     {animeAccents ? "Enabled" : "Off (Minimal)"}
                   </Badge>
                 </div>
@@ -201,14 +271,18 @@ export default function HunterArchivesPage() {
               </button>
             </div>
 
-            {/* Audio SFX Toggle (iOS Switch) */}
+            {/* Audio SFX Toggle */}
             <div className="flex items-center justify-between gap-4 pt-4">
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
                     Sound Effects
                   </h4>
-                  <Badge variant={audioEnabled ? "income" : "neutral"} size="sm" suppressHydrationWarning>
+                  <Badge
+                    variant={audioEnabled ? "income" : "neutral"}
+                    size="sm"
+                    suppressHydrationWarning
+                  >
                     {audioEnabled ? "Sound On" : "Muted"}
                   </Badge>
                 </div>
@@ -243,7 +317,11 @@ export default function HunterArchivesPage() {
                     Interface Theme
                   </h4>
                   <Badge variant="brand" size="sm" suppressHydrationWarning>
-                    {theme === "system" ? "System Default" : theme === "dark" ? "Dark Mode" : "Light Mode"}
+                    {theme === "system"
+                      ? "System Default"
+                      : theme === "dark"
+                      ? "Dark Mode"
+                      : "Light Mode"}
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-lg leading-relaxed">
@@ -258,18 +336,21 @@ export default function HunterArchivesPage() {
           </div>
         </Card>
 
-        {/* 3. Data Export & Backup */}
-        <Card variant="default" className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        {/* 3. Data Export, Import & Backup */}
+        <Card
+          variant="default"
+          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
                 Data Export & Backup
               </span>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-1">
-                Download CSV Ledger ({transactions.length} Records)
+                CSV Ledger Backup ({transactions.length} Records)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-lg leading-relaxed">
-                Export all transactions as an Excel-compatible CSV file with UTF-8 BOM encoding. Ideal for spreadsheets, accounting, or offline backups.
+                Export all transactions as an Excel-compatible CSV file, or import a previously exported CSV file to restore your records.
               </p>
               {exportNotice && (
                 <span className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 block font-medium">
@@ -278,10 +359,50 @@ export default function HunterArchivesPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleImportCSVFile}
+                className="hidden"
+              />
+
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={importingCSV}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                  />
+                </svg>
+                Import CSV
+              </Button>
+
               <Button variant="secondary" size="sm" onClick={handleExport}>
-                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
                 </svg>
                 Export CSV
               </Button>
@@ -293,22 +414,27 @@ export default function HunterArchivesPage() {
           </div>
         </Card>
 
-        {/* 4. SMS Terminal Utility */}
-        <Card variant="default" className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card">
+        {/* 4. Batch SMS Terminal Utility */}
+        <Card
+          variant="default"
+          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card"
+        >
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
             Utilities & Tools
           </span>
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-            Bank & UPI SMS Parser
+            Bank & UPI SMS Parser (Single or Batch)
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed">
-            Test transaction parsing for SMS messages from Indian banks (HDFC, SBI, ICICI, Axis, Paytm, PhonePe, Google Pay).
+            Paste one or multiple SMS messages (one per line) from Indian banks (HDFC, SBI, ICICI, Axis, Paytm, PhonePe, Google Pay) to extract and log them at once.
           </p>
 
           <div className="space-y-3">
             <textarea
-              rows={3}
-              placeholder="Paste SMS here, e.g. 'Paid Rs. 450.00 to Swiggy using UPI on 11-10-2026...'"
+              rows={4}
+              placeholder={
+                "Paste one or more SMS messages (one per line):\nPaid Rs. 450.00 to Swiggy using UPI on 15-10-2026\nRs. 1,200.00 debited from A/c towards Amazon on 15-10-2026"
+              }
               value={smsInput}
               onChange={(e) => setSmsInput(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-3.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono rounded-xl focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all resize-none"
@@ -317,11 +443,13 @@ export default function HunterArchivesPage() {
             <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2.5">
                 <Button variant="secondary" size="sm" onClick={handleDecodeSMS}>
-                  Parse Message
+                  Parse Message(s)
                 </Button>
-                {parsedData && (
+                {parsedBatch.length > 0 && (
                   <Button variant="primary" size="sm" onClick={handleAddParsedQuest}>
-                    Add as Transaction
+                    {parsedBatch.length === 1
+                      ? "Add as Transaction"
+                      : `Import All (${parsedBatch.length})`}
                   </Button>
                 )}
               </div>

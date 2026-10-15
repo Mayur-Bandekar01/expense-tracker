@@ -1,4 +1,5 @@
 import { Transaction } from "../types/hunter";
+import { getTodayLocalDate } from "./dateUtils";
 
 function escapeCSVField(val: unknown): string {
   if (val === null || val === undefined) return "";
@@ -59,4 +60,72 @@ export function exportToCSV(transactions: Transaction[]): void {
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/**
+ * Parse a single CSV line respecting quoted fields
+ */
+function splitCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Parse an exported CSV file back into Transaction objects
+ */
+export function parseCSVTransactions(csvText: string): Partial<Transaction>[] {
+  if (!csvText || !csvText.trim()) return [];
+
+  const cleanText = csvText.replace(/^\uFEFF/, "").trim();
+  const lines = cleanText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const results: Partial<Transaction>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]);
+    if (cols.length < 4) continue;
+
+    const [rawDate, rawType, rawCategory, rawAmount, rawMerchant, rawNote, rawMethod, rawRecurring] =
+      cols;
+
+    const amount = parseFloat((rawAmount || "").replace(/,/g, ""));
+    if (isNaN(amount) || amount <= 0) continue;
+
+    const type: "income" | "expense" =
+      (rawType || "").toLowerCase().includes("income") ? "income" : "expense";
+
+    results.push({
+      date: rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : getTodayLocalDate(),
+      type,
+      category: rawCategory || "Miscellaneous",
+      amount,
+      merchant: rawMerchant || "",
+      note: rawNote || rawMerchant || (type === "income" ? "Income Deposit" : "Expense"),
+      method: rawMethod || "UPI",
+      isRecurring: (rawRecurring || "").toLowerCase() === "yes",
+    });
+  }
+
+  return results;
 }

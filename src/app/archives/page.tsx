@@ -34,6 +34,7 @@ export default function HunterArchivesPage() {
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
   const [importingCSV, setImportingCSV] = useState(false);
+  const [confirmClearData, setConfirmClearData] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -45,7 +46,8 @@ export default function HunterArchivesPage() {
 
   const handleExport = () => {
     if (transactions.length === 0) {
-      alert("No transaction records to export.");
+      setExportNotice("No transaction records available to export.");
+      setTimeout(() => setExportNotice(null), 3500);
       return;
     }
     exportToCSV(transactions);
@@ -62,7 +64,8 @@ export default function HunterArchivesPage() {
       const text = await file.text();
       const parsedRows = parseCSVTransactions(text);
       if (parsedRows.length === 0) {
-        alert("No valid transactions found in the selected CSV file.");
+        setExportNotice("No valid transactions found in the selected CSV file.");
+        setTimeout(() => setExportNotice(null), 4000);
         return;
       }
 
@@ -74,7 +77,6 @@ export default function HunterArchivesPage() {
       setTimeout(() => setExportNotice(null), 5000);
     } catch (err) {
       console.error("CSV import error:", err);
-      alert("Failed to read CSV file. Please ensure it matches the Paisa Pulse export format.");
     } finally {
       setImportingCSV(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -84,7 +86,6 @@ export default function HunterArchivesPage() {
   const handleDecodeSMS = () => {
     if (!smsInput.trim()) return;
 
-    // Split by lines to support both single SMS and multi-line batch SMS pasting
     const lines = smsInput
       .split(/\r?\n/)
       .map((l) => l.trim())
@@ -150,15 +151,11 @@ export default function HunterArchivesPage() {
     setTimeout(() => setAddedNotice(null), 4000);
   };
 
-  const handleResetLedger = () => {
-    if (
-      window.confirm(
-        "Clear all records and reset to an empty ledger? This will clear locally cached and cloud records."
-      )
-    ) {
-      resetToDemoData();
-      alert("Records cleared. Ledger is now empty and ready for your real data.");
-    }
+  const handleConfirmResetLedger = () => {
+    resetToDemoData();
+    setConfirmClearData(false);
+    setExportNotice("All local and synced ledger records have been wiped clean.");
+    setTimeout(() => setExportNotice(null), 4500);
   };
 
   return (
@@ -336,11 +333,12 @@ export default function HunterArchivesPage() {
           </div>
         </Card>
 
-        {/* 3. Data Export, Import & Backup */}
+        {/* 3. Data Export, Import & Destructive Reset Zone */}
         <Card
           variant="default"
-          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card"
+          className="p-5 md:p-6 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card space-y-5"
         >
+          {/* Top Row: CSV Export & Import */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
@@ -359,7 +357,7 @@ export default function HunterArchivesPage() {
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -375,7 +373,7 @@ export default function HunterArchivesPage() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <svg
-                  className="w-4 h-4 mr-1.5"
+                  className="w-4 h-4 mr-1.5 text-brand-600 dark:text-brand-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -406,11 +404,72 @@ export default function HunterArchivesPage() {
                 </svg>
                 Export CSV
               </Button>
-
-              <Button variant="ghost" size="sm" onClick={handleResetLedger}>
-                Clear Local Data
-              </Button>
             </div>
+          </div>
+
+          {/* Dedicated 3D Tactile Reset / Clear Local Data Sub-Panel */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200/70 dark:border-rose-800/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:shadow-none mt-0.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.8}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Reset & Clear Ledger Data
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Wipes cached transactions, budgets, recurring bills, and savings goals to start fresh.
+                </p>
+              </div>
+            </div>
+
+            {!confirmClearData ? (
+              <button
+                type="button"
+                onClick={() => setConfirmClearData(true)}
+                className="group relative inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-gradient-to-b from-white via-rose-50/60 to-rose-100/80 dark:from-rose-950/60 dark:to-rose-900/40 hover:from-rose-50 hover:to-rose-100 dark:hover:from-rose-900/70 dark:hover:to-rose-900/50 border border-rose-200/90 dark:border-rose-800/80 shadow-[inset_0_1px_0_0_#ffffff,0_2px_0_0_rgba(225,29,72,0.18),0_4px_10px_-2px_rgba(225,29,72,0.12)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_2px_0_0_rgba(0,0,0,0.6)] active:translate-y-[1px] transition-all duration-150 shrink-0 self-start sm:self-auto"
+              >
+                <svg
+                  className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 transition-transform duration-150 group-hover:rotate-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                <span>Clear Local Data</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 self-start sm:self-auto animate-in fade-in duration-150">
+                <button
+                  type="button"
+                  onClick={handleConfirmResetLedger}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 border border-rose-700/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_0_#9f1239,0_4px_12px_rgba(225,29,72,0.3)] active:translate-y-[1px] transition-all"
+                >
+                  <span>Confirm Wipe</span>
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmClearData(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
 

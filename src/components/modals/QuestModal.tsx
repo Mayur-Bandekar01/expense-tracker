@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Transaction } from "../../types/hunter";
 import { parseSMS } from "../../lib/smsParser";
 import { getTodayLocalDate } from "../../lib/dateUtils";
@@ -25,7 +25,7 @@ export function QuestModal({
   onDelete,
   initialTransaction,
 }: QuestModalProps) {
-  const { animeAccents } = useHunterSystem();
+  const { animeAccents, spheres } = useHunterSystem();
 
   const [activeTab, setActiveTab] = useState<"manual" | "sms">("manual");
   const [type, setType] = useState<"income" | "expense">("expense");
@@ -117,20 +117,32 @@ export function QuestModal({
     }
   };
 
-  const categories = [
-    { value: "Dining & Food", label: "Dining & Food" },
-    { value: "Groceries", label: "Groceries" },
-    { value: "Transportation", label: "Transportation" },
-    { value: "Shopping", label: "Shopping & Electronics" },
-    { value: "Software & SaaS", label: "Software & SaaS" },
-    { value: "Entertainment", label: "Entertainment" },
-    { value: "Rent & Housing", label: "Housing & Rent" },
-    { value: "Utilities & Bills", label: "Utilities & Bills" },
-    { value: "Health & Fitness", label: "Healthcare & Fitness" },
-    { value: "Investments & SIP", label: "Investments & Savings" },
-    { value: "Salary & Income", label: "Salary & Income" },
-    { value: "Miscellaneous", label: "Miscellaneous" },
-  ];
+  const categories = useMemo(() => {
+    const base = [
+      "Dining & Food",
+      "Groceries",
+      "Transportation",
+      "Shopping",
+      "Software & SaaS",
+      "Entertainment",
+      "Rent & Housing",
+      "Utilities & Bills",
+      "Health & Fitness",
+      "Investments & SIP",
+      "Salary & Income",
+      "Miscellaneous",
+    ];
+    const set = new Set<string>(base);
+    if (Array.isArray(spheres)) {
+      spheres.forEach((s) => {
+        if (s?.name?.trim()) set.add(s.name.trim());
+      });
+    }
+    if (initialTransaction?.category?.trim()) {
+      set.add(initialTransaction.category.trim());
+    }
+    return Array.from(set).map((cat) => ({ value: cat, label: cat }));
+  }, [spheres, initialTransaction]);
 
   return (
     <Modal

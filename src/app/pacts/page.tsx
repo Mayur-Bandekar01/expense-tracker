@@ -14,7 +14,7 @@ import { Select } from "../../components/ui/Select";
 import { EmptyState } from "../../components/ui/EmptyState";
 
 export default function PerpetualPactsPage() {
-  const { pacts, savePact, togglePact, deletePact, executePact, user, animeAccents } = useHunterSystem();
+  const { pacts, savePact, togglePact, deletePact, executePact, user, spheres } = useHunterSystem();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [payingPact, setPayingPact] = useState<PerpetualPact | null>(null);
   const [deletingPact, setDeletingPact] = useState<{ id: string; name: string } | null>(null);
@@ -27,7 +27,8 @@ export default function PerpetualPactsPage() {
   const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "ANNUAL">("MONTHLY");
   const [nextDate, setNextDate] = useState(getTodayLocalDate());
 
-  // Normalized monthly calculation based on frequency
+  const todayStr = useMemo(() => getTodayLocalDate(), []);
+
   const getMonthlyEquivalent = (amount: number, freq: string) => {
     switch (freq) {
       case "DAILY":
@@ -122,16 +123,25 @@ export default function PerpetualPactsPage() {
     }
   };
 
-  const categoryOptions = [
-    { value: "Entertainment", label: "Entertainment & Streaming" },
-    { value: "Rent & Housing", label: "Housing & Rent" },
-    { value: "Utilities", label: "Utilities & Internet" },
-    { value: "Health & Fitness", label: "Gym & Fitness" },
-    { value: "Software & SaaS", label: "Software & Subscriptions" },
-    { value: "Insurance", label: "Insurance & Health" },
-    { value: "Investments & SIP", label: "SIP & Investments" },
-    { value: "Miscellaneous", label: "Miscellaneous" },
-  ];
+  const categoryOptions = useMemo(() => {
+    const base = [
+      "Entertainment",
+      "Rent & Housing",
+      "Utilities & Bills",
+      "Health & Fitness",
+      "Software & SaaS",
+      "Insurance",
+      "Investments & SIP",
+      "Miscellaneous",
+    ];
+    const set = new Set<string>(base);
+    if (Array.isArray(spheres)) {
+      spheres.forEach((s) => {
+        if (s?.name?.trim()) set.add(s.name.trim());
+      });
+    }
+    return Array.from(set).map((cat) => ({ value: cat, label: cat }));
+  }, [spheres]);
 
   return (
     <>
@@ -255,6 +265,8 @@ export default function PerpetualPactsPage() {
         <div className="space-y-3">
           {(pacts || []).filter(Boolean).map((pact) => {
             const monthlyEquiv = getMonthlyEquivalent(Number(pact.goldCost) || 0, pact.frequency);
+            const isOverdue = pact.isActive && Boolean(pact.nextInvocationDate) && pact.nextInvocationDate < todayStr;
+            const isDueToday = pact.isActive && pact.nextInvocationDate === todayStr;
 
             return (
               <Card
@@ -281,6 +293,16 @@ export default function PerpetualPactsPage() {
                       <Badge variant="brand" size="sm">
                         {pact.frequency}
                       </Badge>
+                      {isOverdue && (
+                        <Badge variant="expense" size="sm">
+                          Overdue
+                        </Badge>
+                      )}
+                      {isDueToday && (
+                        <Badge variant="warning" size="sm">
+                          Due Today
+                        </Badge>
+                      )}
                       {!pact.isActive && (
                         <Badge variant="neutral" size="sm">
                           Paused
@@ -317,7 +339,6 @@ export default function PerpetualPactsPage() {
                   </div>
 
                   <div className="flex items-center gap-2 justify-end">
-                    {/* Mark as paid / log to transactions */}
                     <Button
                       variant={recentlyPaidId === pact.id ? "success" : "outline"}
                       size="sm"
@@ -329,7 +350,6 @@ export default function PerpetualPactsPage() {
                       {recentlyPaidId === pact.id ? "Paid ✓" : "Pay & Log"}
                     </Button>
 
-                    {/* Active / Paused Toggle */}
                     <button
                       type="button"
                       onClick={() => togglePact(pact.id)}
@@ -343,7 +363,6 @@ export default function PerpetualPactsPage() {
                       {pact.isActive ? "Active" : "Paused"}
                     </button>
 
-                    {/* Delete button (visible on mobile touchscreens) */}
                     <button
                       type="button"
                       title="Delete bill"
@@ -362,7 +381,7 @@ export default function PerpetualPactsPage() {
         </div>
       )}
 
-      {/* ── Confirm Payment Modal (Reliable across all mobile browsers & webviews) ── */}
+      {/* Confirm Payment Modal */}
       <Modal
         isOpen={Boolean(payingPact)}
         onClose={() => setPayingPact(null)}
@@ -408,7 +427,7 @@ export default function PerpetualPactsPage() {
         </div>
       </Modal>
 
-      {/* ── Confirm Delete Recurring Bill Modal ── */}
+      {/* Confirm Delete Recurring Bill Modal */}
       <Modal
         isOpen={Boolean(deletingPact)}
         onClose={() => setDeletingPact(null)}

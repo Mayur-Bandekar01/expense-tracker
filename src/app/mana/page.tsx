@@ -25,7 +25,9 @@ export default function ManaReservesPage() {
     spheres,
   } = useHunterSystem();
 
-  // Category Budget Modal State
+  const defaultYM = useMemo(() => getTodayLocalDate().slice(0, 7), []);
+  const [selectedMonth, setSelectedMonth] = useState<string>(defaultYM);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRune, setEditingRune] = useState<CategoryBudgetRune | null>(null);
   const [catName, setCatName] = useState("Dining & Food");
@@ -34,36 +36,30 @@ export default function ManaReservesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Overall Monthly Budget Modal State
   const [isTotalBudgetModalOpen, setIsTotalBudgetModalOpen] = useState(false);
   const [totalBudgetInput, setTotalBudgetInput] = useState("");
   const [isSavingTotal, setIsSavingTotal] = useState(false);
   const [totalErrorMessage, setTotalErrorMessage] = useState<string | null>(null);
 
-  // Notifications
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Current Month String (e.g. "2026-10")
-  const currentMonth = useMemo(() => getTodayLocalDate().slice(0, 7), []);
-  const monthLabel = useMemo(
-    () => new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
-    []
-  );
+  const monthLabel = useMemo(() => {
+    const [y, m] = (selectedMonth || defaultYM).split("-").map(Number);
+    if (!y || !m) return "Current Month";
+    const d = new Date(y, m - 1, 1);
+    return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+  }, [selectedMonth, defaultYM]);
 
-  // Auto-open Total Budget modal if ?edit=total URL query is present
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("edit") === "total") {
-        setTotalBudgetInput(
-          monthlyBudget && monthlyBudget > 0 ? String(monthlyBudget) : ""
-        );
+        setTotalBudgetInput(monthlyBudget && monthlyBudget > 0 ? String(monthlyBudget) : "");
         setIsTotalBudgetModalOpen(true);
       }
     }
   }, [monthlyBudget]);
 
-  // Helper for normalizing category names across presets, SMS, and custom tags
   const normalizeCat = (cat: string) => {
     const c = (cat || "").trim().toLowerCase();
     if (c.includes("food") || c.includes("dining") || c.includes("provision")) return "dining & food";
@@ -75,45 +71,43 @@ export default function ManaReservesPage() {
     return c;
   };
 
-  // Compute live spent for each category from actual transactions for the current month
   const enrichedRunes = useMemo(() => {
     return (runes || []).map((rune) => {
       const runeCat = normalizeCat(rune?.category || "");
       const computedSpent = (transactions || [])
         .filter((tx) => {
           if (tx?.type !== "expense") return false;
-          if (!tx?.date || !tx.date.startsWith(currentMonth)) return false;
+          if (!tx?.date || !tx.date.startsWith(selectedMonth)) return false;
           const txCat = normalizeCat(tx?.category || "");
-          return (runeCat && txCat.includes(runeCat)) || (txCat && runeCat.includes(txCat)) || runeCat === txCat;
+          return (
+            (runeCat && txCat.includes(runeCat)) ||
+            (txCat && runeCat.includes(txCat)) ||
+            runeCat === txCat
+          );
         })
         .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
 
-      const effectiveSpent = computedSpent;
-
       return {
         ...rune,
-        effectiveSpent,
+        effectiveSpent: computedSpent,
       };
     });
-  }, [runes, transactions, currentMonth]);
+  }, [runes, transactions, selectedMonth]);
 
-  // Total actual expense for the month across all categories
   const actualMonthTotalSpent = useMemo(() => {
     return (transactions || [])
-      .filter((tx) => tx?.type === "expense" && tx?.date && tx.date.startsWith(currentMonth))
+      .filter((tx) => tx?.type === "expense" && tx?.date && tx.date.startsWith(selectedMonth))
       .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
-  }, [transactions, currentMonth]);
+  }, [transactions, selectedMonth]);
 
   const totalRunesCap = (enrichedRunes || []).reduce((sum, r) => sum + (Number(r?.limit) || 0), 0);
 
-  // Effective Overall Budget: user's explicit monthly cap (e.g. ₹20,000) or sum of category limits
   const effectiveTotalCap =
-    typeof monthlyBudget === "number" && monthlyBudget > 0
-      ? monthlyBudget
-      : totalRunesCap;
+    typeof monthlyBudget === "number" && monthlyBudget > 0 ? monthlyBudget : totalRunesCap;
 
   const effectiveTotalBurn = actualMonthTotalSpent;
-  const burnPercent = effectiveTotalCap > 0 ? Math.round((effectiveTotalBurn / effectiveTotalCap) * 100) : 0;
+  const burnPercent =
+    effectiveTotalCap > 0 ? Math.round((effectiveTotalBurn / effectiveTotalCap) * 100) : 0;
   const remainingTotal = Math.max(0, effectiveTotalCap - effectiveTotalBurn);
 
   const baseCategories = useMemo(
@@ -148,7 +142,6 @@ export default function ManaReservesPage() {
     }));
   }, [baseCategories, spheres, editingRune]);
 
-  // ── Overall Budget Handlers ──────────────────────────────────────
   const handleOpenEditTotalBudget = () => {
     setTotalBudgetInput(effectiveTotalCap > 0 ? String(effectiveTotalCap) : "");
     setTotalErrorMessage(null);
@@ -195,7 +188,6 @@ export default function ManaReservesPage() {
     }
   };
 
-  // ── Category Budget Handlers ────────────────────────────────────
   const handleOpenAdd = () => {
     setEditingRune(null);
     setCatName("Dining & Food");
@@ -246,7 +238,7 @@ export default function ManaReservesPage() {
         id: editingRune ? editingRune.id : `rune-${Date.now()}`,
         category: trimmedCat,
         limit: Math.round(lim * 100) / 100,
-        spent: editingRune ? (editingRune.spent ?? 0) : 0,
+        spent: editingRune ? editingRune.spent ?? 0 : 0,
         element,
       });
 
@@ -262,7 +254,9 @@ export default function ManaReservesPage() {
       }, 4000);
     } catch (err: any) {
       console.error("Save budget error:", err);
-      setErrorMessage(err?.message || "Failed to save budget. Please check your connection and try again.");
+      setErrorMessage(
+        err?.message || "Failed to save budget. Please check your connection and try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -283,36 +277,51 @@ export default function ManaReservesPage() {
 
   return (
     <>
-      {/* Page Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
             <span>📊</span>
             <span>Monthly Budgets</span>
           </h1>
-          <p suppressHydrationWarning className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p
+            suppressHydrationWarning
+            className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1"
+          >
             Category spending limits and allocation tracking for {monthLabel}.
           </p>
         </div>
 
-        {/* Action Buttons: Clear distinction between editing Total Monthly Budget and adding Category limits */}
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value || defaultYM)}
+            aria-label="Select budget month"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-subtle focus:outline-none focus:border-brand-500"
+          />
+
           <Button
             variant="outline"
             onClick={handleOpenEditTotalBudget}
             className="text-xs font-semibold"
           >
-            <svg className="w-4 h-4 mr-1.5 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <svg
+              className="w-4 h-4 mr-1.5 text-brand-600 dark:text-brand-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
             {effectiveTotalCap > 0 ? "Edit Total Budget" : "Set Total Budget"}
           </Button>
 
-          <Button
-            variant="primary"
-            onClick={handleOpenAdd}
-            className="text-xs font-semibold"
-          >
+          <Button variant="primary" onClick={handleOpenAdd} className="text-xs font-semibold">
             <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -321,7 +330,6 @@ export default function ManaReservesPage() {
         </div>
       </div>
 
-      {/* Success Notification Banner */}
       {successMessage && (
         <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm flex items-center justify-between shadow-subtle animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2.5">
@@ -338,12 +346,17 @@ export default function ManaReservesPage() {
         </div>
       )}
 
-      {/* Global Monthly Budget Summary Card */}
-      <Card variant="default" className="p-5 md:p-6 mb-8 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/50">
+      <Card
+        variant="default"
+        className="p-5 md:p-6 mb-8 rounded-2xl md:rounded-3xl border-slate-200/80 dark:border-slate-800 shadow-card bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/50"
+      >
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span suppressHydrationWarning className="text-xs font-semibold text-slate-400 dark:text-slate-400 tracking-wider uppercase">
+              <span
+                suppressHydrationWarning
+                className="text-xs font-semibold text-slate-400 dark:text-slate-400 tracking-wider uppercase"
+              >
                 {monthLabel} Overview
               </span>
               {typeof monthlyBudget === "number" && monthlyBudget > 0 && (
@@ -354,26 +367,47 @@ export default function ManaReservesPage() {
             </div>
 
             <div className="flex flex-wrap items-baseline gap-2.5 mt-1.5">
-              <span suppressHydrationWarning className="text-2xl md:text-3xl font-bold font-numbers text-slate-900 dark:text-white">
+              <span
+                suppressHydrationWarning
+                className="text-2xl md:text-3xl font-bold font-numbers text-slate-900 dark:text-white"
+              >
                 {formatINR(effectiveTotalBurn)}
               </span>
-              <span suppressHydrationWarning className="text-sm font-numbers text-slate-500 dark:text-slate-400">
+              <span
+                suppressHydrationWarning
+                className="text-sm font-numbers text-slate-500 dark:text-slate-400"
+              >
                 {effectiveTotalCap > 0 ? (
-                  <>spent of <strong className="text-slate-800 dark:text-slate-200">{formatINR(effectiveTotalCap)}</strong> budget</>
+                  <>
+                    spent of{" "}
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {formatINR(effectiveTotalCap)}
+                    </strong>{" "}
+                    budget
+                  </>
                 ) : (
                   "spent this month (no budget limit set)"
                 )}
               </span>
 
-              {/* Direct Edit Button right next to the figures */}
               <button
                 type="button"
                 onClick={handleOpenEditTotalBudget}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm ml-1"
                 title="Change monthly budget limit"
               >
-                <svg className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                <svg
+                  className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
                 </svg>
                 <span>{effectiveTotalCap > 0 ? "Edit Budget" : "Set Budget"}</span>
               </button>
@@ -421,7 +455,6 @@ export default function ManaReservesPage() {
         <ProgressBar value={effectiveTotalBurn} max={effectiveTotalCap || 1} size="md" />
       </Card>
 
-      {/* Category Budgets Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -448,7 +481,6 @@ export default function ManaReservesPage() {
         </Button>
       </div>
 
-      {/* Category Budgets Grid */}
       {enrichedRunes.length === 0 ? (
         <EmptyState
           icon="🍵"
@@ -463,7 +495,8 @@ export default function ManaReservesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {enrichedRunes.map((rune) => {
-            const pct = rune.limit > 0 ? Math.round((rune.effectiveSpent / rune.limit) * 100) : 0;
+            const pct =
+              rune.limit > 0 ? Math.round((rune.effectiveSpent / rune.limit) * 100) : 0;
             const isBreached = pct > 100;
             const isWarning = pct >= 80 && !isBreached;
             const remaining = Math.max(0, rune.limit - rune.effectiveSpent);
@@ -480,7 +513,10 @@ export default function ManaReservesPage() {
                     <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                       {rune.category}
                     </span>
-                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Badge
                         variant={isBreached ? "expense" : isWarning ? "warning" : "neutral"}
                         size="sm"
@@ -488,7 +524,6 @@ export default function ManaReservesPage() {
                         {isBreached ? "Exceeded" : isWarning ? "80%+ Used" : `${pct}%`}
                       </Badge>
 
-                      {/* Header Edit Button */}
                       <button
                         type="button"
                         title="Edit budget"
@@ -500,11 +535,15 @@ export default function ManaReservesPage() {
                         className="p-1.5 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
                         </svg>
                       </button>
 
-                      {/* Header Delete Button */}
                       <button
                         type="button"
                         title="Delete budget"
@@ -516,7 +555,12 @@ export default function ManaReservesPage() {
                         className="p-1.5 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-all"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -536,10 +580,14 @@ export default function ManaReservesPage() {
                       <span
                         className={cn(
                           "text-xs font-semibold font-numbers",
-                          isBreached ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                          isBreached
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-emerald-600 dark:text-emerald-400"
                         )}
                       >
-                        {isBreached ? `+${formatINR(rune.effectiveSpent - rune.limit)} over` : `${formatINR(remaining)} left`}
+                        {isBreached
+                          ? `+${formatINR(rune.effectiveSpent - rune.limit)} over`
+                          : `${formatINR(remaining)} left`}
                       </span>
                     </div>
                   </div>
@@ -547,14 +595,9 @@ export default function ManaReservesPage() {
 
                 <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                   <div className="flex-1">
-                    <ProgressBar
-                      value={rune.effectiveSpent}
-                      max={rune.limit}
-                      size="sm"
-                    />
+                    <ProgressBar value={rune.effectiveSpent} max={rune.limit} size="sm" />
                   </div>
 
-                  {/* Distinct, explicit Edit button on each card */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -565,7 +608,12 @@ export default function ManaReservesPage() {
                     className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 px-2.5 py-1 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-950/40 border border-brand-200/80 dark:border-brand-800/80 transition-colors flex items-center gap-1.5 shrink-0 shadow-subtle"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
                     </svg>
                     <span>Edit Budget</span>
                   </button>
@@ -576,7 +624,7 @@ export default function ManaReservesPage() {
         </div>
       )}
 
-      {/* ── Modal 1: Edit Overall Monthly Budget ────────────────────── */}
+      {/* Modal 1: Edit Overall Monthly Budget */}
       <Modal
         isOpen={isTotalBudgetModalOpen}
         onClose={() => {
@@ -621,7 +669,6 @@ export default function ManaReservesPage() {
             </div>
           </div>
 
-          {/* Quick preset chips for rapid selection */}
           <div>
             <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
               Quick Presets
@@ -671,12 +718,7 @@ export default function ManaReservesPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                isLoading={isSavingTotal}
-              >
+              <Button type="submit" variant="primary" size="sm" isLoading={isSavingTotal}>
                 Save Budget
               </Button>
             </div>
@@ -684,7 +726,7 @@ export default function ManaReservesPage() {
         </form>
       </Modal>
 
-      {/* ── Modal 2: Category Budget Create / Edit ─────────────────── */}
+      {/* Modal 2: Category Budget Create / Edit */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCancelModal}
@@ -783,12 +825,7 @@ export default function ManaReservesPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                isLoading={isSaving}
-              >
+              <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
                 {editingRune ? "Save Changes" : "Create Budget"}
               </Button>
             </div>

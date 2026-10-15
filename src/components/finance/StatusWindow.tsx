@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Transaction, Goal, CategoryBudgetRune } from "../../types/hunter";
 import { formatINR, formatCompactINR, cn } from "../../lib/utils";
-import { getTodayLocalDate, formatRelativeDate, formatDisplayDate } from "../../lib/dateUtils";
+import { getTodayLocalDate, formatRelativeDate } from "../../lib/dateUtils";
 import { useHunterSystem } from "../../lib/hunterContext";
 import { Button } from "../ui/Button";
 import { Card, CardHeader, CardTitle } from "../ui/Card";
@@ -26,9 +26,6 @@ export interface StatusWindowProps {
   onNewQuest?: () => void;
 }
 
-/**
- * Filter transactions based on selected period using local calendar
- */
 function filterTxsByPeriod(txs: Transaction[], period: "today" | "week" | "month"): Transaction[] {
   const todayStr = getTodayLocalDate();
 
@@ -96,7 +93,6 @@ export function StatusWindow({
   goals = [],
   runes = [],
   initialPeriod = "month",
-  hunterName = "User",
   onNavigateToQuests,
   onNavigateToBounties,
   onNavigateToBudgets,
@@ -109,12 +105,10 @@ export function StatusWindow({
   const [period, setPeriod] = useState<"today" | "week" | "month">(initialPeriod);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
-  // Filtered transactions for active period
   const periodTxs = useMemo(() => {
     return filterTxsByPeriod(transactions, period);
   }, [transactions, period]);
 
-  // All-time available balance (cumulative income minus cumulative expenses)
   const availableBalance = useMemo(() => {
     return (transactions || []).reduce((acc, t) => {
       const amt = Number(t.amount) || 0;
@@ -122,7 +116,6 @@ export function StatusWindow({
     }, 0);
   }, [transactions]);
 
-  // Financial aggregates for active period
   const totals = useMemo(() => {
     const income = (periodTxs || [])
       .filter((t) => t.type === "income")
@@ -135,7 +128,28 @@ export function StatusWindow({
     return { income, spent, net, savingsRate };
   }, [periodTxs]);
 
-  // Helper for normalizing category names across presets, SMS, and custom tags
+  // Top Spending Categories Breakdown for active period
+  const categoryBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    let totalExpense = 0;
+    (periodTxs || []).forEach((tx) => {
+      if (tx.type === "expense") {
+        const amt = Number(tx.amount) || 0;
+        const cat = tx.category || "Miscellaneous";
+        map.set(cat, (map.get(cat) || 0) + amt);
+        totalExpense += amt;
+      }
+    });
+    return Array.from(map.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percent: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 4);
+  }, [periodTxs]);
+
   const normalizeCat = (cat: string) => {
     const c = (cat || "").trim().toLowerCase();
     if (c.includes("food") || c.includes("dining") || c.includes("provision")) return "dining & food";
@@ -147,7 +161,6 @@ export function StatusWindow({
     return c;
   };
 
-  // Enriched category budgets comparing spent vs limit
   const activeBudgets = useMemo(() => {
     const currentMonth = getTodayLocalDate().slice(0, 7);
     return (runes || []).map((rune) => {
@@ -157,7 +170,11 @@ export function StatusWindow({
           if (tx?.type !== "expense") return false;
           if (!tx?.date || !tx.date.startsWith(currentMonth)) return false;
           const txCat = normalizeCat(tx?.category || "");
-          return (runeCat && txCat.includes(runeCat)) || (txCat && runeCat.includes(txCat)) || runeCat === txCat;
+          return (
+            (runeCat && txCat.includes(runeCat)) ||
+            (txCat && runeCat.includes(txCat)) ||
+            runeCat === txCat
+          );
         })
         .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
 
@@ -175,7 +192,6 @@ export function StatusWindow({
     });
   }, [runes, transactions]);
 
-  // Overall monthly budget summary based strictly on the current calendar month
   const monthlyBudgetSummary = useMemo(() => {
     const currentMonth = getTodayLocalDate().slice(0, 7);
     const currentMonthSpent = (transactions || [])
@@ -184,16 +200,13 @@ export function StatusWindow({
 
     const totalRunesLimit = activeBudgets.reduce((sum, b) => sum + (Number(b.limit) || 0), 0);
     const totalLimit =
-      typeof monthlyBudget === "number" && monthlyBudget > 0
-        ? monthlyBudget
-        : totalRunesLimit;
+      typeof monthlyBudget === "number" && monthlyBudget > 0 ? monthlyBudget : totalRunesLimit;
     const totalSpent = currentMonthSpent;
     const percent = totalLimit > 0 ? Math.min(100, Math.round((totalSpent / totalLimit) * 100)) : 0;
     const remaining = Math.max(0, totalLimit - totalSpent);
     return { totalLimit, totalSpent, percent, remaining };
   }, [activeBudgets, monthlyBudget, transactions]);
 
-  // 14-Day Expense History Bars
   const fourteenDayBars = useMemo(() => {
     const bars: { label: string; date: string; amount: number; isToday: boolean }[] = [];
     const now = new Date();
@@ -230,21 +243,22 @@ export function StatusWindow({
     return Math.round(total14DaysSpend / 14);
   }, [total14DaysSpend]);
 
-  // Recent 6 transactions
   const recentTransactions = useMemo(() => {
     return [...(transactions || [])]
-      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0))
+      .sort(
+        (a, b) =>
+          (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0)
+      )
       .slice(0, 6);
   }, [transactions]);
 
-  // Top 3 active goals
   const highlightGoals = useMemo(() => {
     return (goals || []).slice(0, 3);
   }, [goals]);
 
   return (
     <div className="space-y-6">
-      {/* ── 1. Page Header & Action Bar ─────────────────────────────── */}
+      {/* 1. Page Header & Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
           <div className="flex items-center gap-2.5">
@@ -266,7 +280,6 @@ export function StatusWindow({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* iOS Segmented Period Selector */}
           <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-xl">
             {(["today", "week", "month"] as const).map((p) => (
               <button
@@ -285,7 +298,6 @@ export function StatusWindow({
             ))}
           </div>
 
-          {/* Prominent Add Transaction Button */}
           <Button
             size="md"
             variant="primary"
@@ -302,13 +314,14 @@ export function StatusWindow({
         </div>
       </div>
 
-      {/* ── 2. Available Balance & Mochi Companion Spotlight ─────────── */}
+      {/* 2. Available Balance & Mochi Companion Spotlight */}
       <div className={cn("grid gap-4", animeAccents ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1")}>
-        {/* Available Balance Hero Card */}
-        <div className={cn(
-          "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl md:rounded-3xl p-6 shadow-card flex flex-col justify-between",
-          animeAccents ? "lg:col-span-2" : "w-full"
-        )}>
+        <div
+          className={cn(
+            "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl md:rounded-3xl p-6 shadow-card flex flex-col justify-between",
+            animeAccents ? "lg:col-span-2" : "w-full"
+          )}
+        >
           <div className="flex items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
@@ -362,7 +375,6 @@ export function StatusWindow({
             </div>
           )}
 
-          {/* Quick Action Shortcuts */}
           <div className="my-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -408,20 +420,28 @@ export function StatusWindow({
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Inflow: <strong suppressHydrationWarning className="text-emerald-700 dark:text-emerald-400">{formatINR(totals.income)}</strong>
+                Inflow:{" "}
+                <strong suppressHydrationWarning className="text-emerald-700 dark:text-emerald-400">
+                  {formatINR(totals.income)}
+                </strong>
               </span>
               <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
-                Outflow: <strong suppressHydrationWarning className="text-rose-700 dark:text-rose-400">{formatINR(totals.spent)}</strong>
+                Outflow:{" "}
+                <strong suppressHydrationWarning className="text-rose-700 dark:text-rose-400">
+                  {formatINR(totals.spent)}
+                </strong>
               </span>
             </div>
             <span className="text-slate-500 dark:text-slate-400 font-medium">
-              Savings Rate: <strong suppressHydrationWarning className="text-slate-900 dark:text-white">{totals.savingsRate}%</strong>
+              Savings Rate:{" "}
+              <strong suppressHydrationWarning className="text-slate-900 dark:text-white">
+                {totals.savingsRate}%
+              </strong>
             </span>
           </div>
         </div>
 
-        {/* Subtle Anime Mascot: Mochi the Budget Companion */}
         {animeAccents && (
           <div className="bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl md:rounded-3xl p-5 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between">
@@ -462,9 +482,8 @@ export function StatusWindow({
         )}
       </div>
 
-      {/* ── 3. Four Executive Summary Metric Cards ──────────────────── */}
+      {/* 3. Four Executive Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Net Cash Flow */}
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Net Flow</span>
@@ -490,14 +509,18 @@ export function StatusWindow({
             <span>Savings Rate</span>
             <span
               suppressHydrationWarning
-              className={cn("font-semibold", totals.savingsRate > 30 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300")}
+              className={cn(
+                "font-semibold",
+                totals.savingsRate > 30
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-slate-700 dark:text-slate-300"
+              )}
             >
               {totals.savingsRate}%
             </span>
           </div>
         </Card>
 
-        {/* Total Income */}
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Inflow</span>
@@ -522,7 +545,6 @@ export function StatusWindow({
           </div>
         </Card>
 
-        {/* Total Expenses */}
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Outflow</span>
@@ -549,7 +571,6 @@ export function StatusWindow({
           </div>
         </Card>
 
-        {/* Monthly Budget Progress Card */}
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Monthly Budget</span>
@@ -578,7 +599,10 @@ export function StatusWindow({
             >
               {formatINR(monthlyBudgetSummary.totalSpent)}
             </div>
-            <p suppressHydrationWarning className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center justify-between gap-1 flex-wrap">
+            <p
+              suppressHydrationWarning
+              className="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center justify-between gap-1 flex-wrap"
+            >
               <span>of {formatINR(monthlyBudgetSummary.totalLimit)} monthly cap</span>
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 {formatINR(monthlyBudgetSummary.remaining)} remaining
@@ -596,11 +620,10 @@ export function StatusWindow({
         </Card>
       </div>
 
-      {/* ── 4. Main Dashboard Grid ──────────────────────────────────── */}
+      {/* 4. Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Spending Chart & Recent Activity (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* 14-Day Spending Velocity Chart */}
           <Card>
             <CardHeader>
               <div>
@@ -619,7 +642,6 @@ export function StatusWindow({
               </div>
             </CardHeader>
 
-            {/* Sparkline Bar Chart */}
             <div className="pt-2">
               <div className="h-44 flex items-end justify-between gap-1.5 sm:gap-2.5 px-1 pb-2 border-b border-slate-100 dark:border-slate-800">
                 {fourteenDayBars.map((bar, idx) => {
@@ -634,7 +656,6 @@ export function StatusWindow({
                       onMouseEnter={() => setHoveredBarIndex(idx)}
                       onMouseLeave={() => setHoveredBarIndex(null)}
                     >
-                      {/* Hover Tooltip */}
                       {isHovered && (
                         <div className="absolute -top-12 z-20 px-2.5 py-1.5 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-sm text-white text-[11px] rounded-xl shadow-lg whitespace-nowrap pointer-events-none border border-slate-700/60 text-center animate-in fade-in duration-100">
                           <span className="font-bold font-numbers block">{formatINR(bar.amount)}</span>
@@ -642,7 +663,6 @@ export function StatusWindow({
                         </div>
                       )}
 
-                      {/* Bar Fill */}
                       <div
                         style={{ height: `${heightPercent}%` }}
                         className={cn(
@@ -659,16 +679,16 @@ export function StatusWindow({
                 })}
               </div>
 
-              {/* X-Axis labels */}
               <div className="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 font-medium pt-2.5 px-1">
                 <span suppressHydrationWarning>{fourteenDayBars[0]?.label}</span>
                 <span suppressHydrationWarning>{fourteenDayBars[6]?.label}</span>
-                <span suppressHydrationWarning className="text-brand-600 dark:text-brand-400 font-semibold">{fourteenDayBars[13]?.label} (Today)</span>
+                <span suppressHydrationWarning className="text-brand-600 dark:text-brand-400 font-semibold">
+                  {fourteenDayBars[13]?.label} (Today)
+                </span>
               </div>
             </div>
           </Card>
 
-          {/* Recent Activity List (Apple Wallet Style) */}
           <Card>
             <CardHeader>
               <div>
@@ -700,7 +720,6 @@ export function StatusWindow({
                       onClick={() => onSelectTransaction?.(tx)}
                       className="py-3 px-2 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-xl transition-colors cursor-pointer group"
                     >
-                      {/* Left: Merchant / Note & Category */}
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
                           className={cn(
@@ -723,23 +742,27 @@ export function StatusWindow({
                             {tx.method && (
                               <>
                                 <span>•</span>
-                                <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{tx.method}</span>
+                                <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                                  {tx.method}
+                                </span>
                               </>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right: Amount & Delete Action */}
                       <div className="flex items-center gap-2.5 shrink-0 ml-3">
                         <div className="text-right">
                           <span
                             className={cn(
                               "text-sm font-bold tracking-tight font-sans",
-                              isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
+                              isIncome
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-slate-900 dark:text-white"
                             )}
                           >
-                            {isIncome ? "+" : "-"}{formatINR(tx.amount)}
+                            {isIncome ? "+" : "-"}
+                            {formatINR(tx.amount)}
                           </span>
                         </div>
 
@@ -754,7 +777,12 @@ export function StatusWindow({
                             className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.8}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                           </button>
                         )}
@@ -767,8 +795,55 @@ export function StatusWindow({
           </Card>
         </div>
 
-        {/* Right Column: Budgets & Savings Goals (1 col) */}
+        {/* Right Column: Top Categories, Budgets & Savings Goals (1 col) */}
         <div className="space-y-6">
+          {/* Top Spending Categories Breakdown */}
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Top Categories</CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Where your money went ({period === "today" ? "today" : period === "week" ? "this week" : "this month"})
+                </p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => router.push("/elements/")}>
+                Tags →
+              </Button>
+            </CardHeader>
+
+            {categoryBreakdown.length === 0 ? (
+              <p className="text-xs text-slate-400 dark:text-slate-500 py-4 text-center">
+                No expenses recorded for this period yet.
+              </p>
+            ) : (
+              <div className="space-y-3.5">
+                {categoryBreakdown.map((item) => (
+                  <div key={item.category} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                          {getCategoryIcon(item.category, false)}
+                        </span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                          {item.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-bold font-numbers text-slate-900 dark:text-white">
+                          {formatCompactINR(item.amount)}
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                          ({item.percent}%)
+                        </span>
+                      </div>
+                    </div>
+                    <ProgressBar value={item.percent} max={100} size="sm" variant="brand" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           {/* Monthly Category Budgets */}
           <Card>
             <CardHeader>
@@ -811,12 +886,7 @@ export function StatusWindow({
                         )}
                       </div>
                     </div>
-                    <ProgressBar
-                      value={b.effectiveSpent}
-                      max={b.limit}
-                      size="sm"
-                      variant="dynamic"
-                    />
+                    <ProgressBar value={b.effectiveSpent} max={b.limit} size="sm" variant="dynamic" />
                   </div>
                 ))}
               </div>

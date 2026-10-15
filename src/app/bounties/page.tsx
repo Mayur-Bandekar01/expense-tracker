@@ -5,10 +5,12 @@ import { BountyBoard } from "../../components/finance/BountyBoard";
 import { BountyModal } from "../../components/modals/BountyModal";
 import { Goal } from "../../types/hunter";
 import { useHunterSystem } from "../../lib/hunterContext";
+import { getTodayLocalDate } from "../../lib/dateUtils";
 import { Button } from "../../components/ui/Button";
 
 export default function BountiesPage() {
-  const { goals, addGoal, updateGoal, depositToGoal, deleteGoal, animeAccents } = useHunterSystem();
+  const { goals, addGoal, updateGoal, depositToGoal, deleteGoal, addTransaction } =
+    useHunterSystem();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "deposit" | "history">("create");
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -52,8 +54,28 @@ export default function BountiesPage() {
     }
   };
 
-  const handleDeposit = async (goalId: string, amount: number, note: string) => {
+  const handleDeposit = async (
+    goalId: string,
+    amount: number,
+    note: string,
+    logInLedger: boolean = true
+  ) => {
+    const target = goals.find((g) => g.id === goalId);
     await depositToGoal(goalId, amount, note);
+
+    if (logInLedger) {
+      await addTransaction({
+        amount,
+        type: "expense",
+        category: "Investments & SIP",
+        merchant: target?.title || "Savings Goal",
+        note: note ? `${note} (${target?.title || "Goal"})` : `Saved towards ${target?.title || "Goal"}`,
+        date: getTodayLocalDate(),
+        time: new Date().toTimeString().slice(0, 5),
+        method: "UPI",
+        isRecurring: false,
+      });
+    }
   };
 
   const handleDelete = async (goalId: string) => {
@@ -73,11 +95,7 @@ export default function BountiesPage() {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={handleOpenCreate}
-          className="self-start sm:self-auto"
-        >
+        <Button variant="primary" onClick={handleOpenCreate} className="self-start sm:self-auto">
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>

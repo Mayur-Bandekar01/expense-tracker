@@ -15,7 +15,7 @@ export interface BountyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveGoal?: (goal: Partial<Goal>) => void;
-  onDeposit?: (goalId: string, amount: number, note: string) => void;
+  onDeposit?: (goalId: string, amount: number, note: string, logInLedger?: boolean) => void;
   onDeleteGoal?: (goalId: string) => void;
   mode: "create" | "edit" | "deposit" | "history";
   onSwitchMode?: (mode: "create" | "edit" | "deposit" | "history") => void;
@@ -34,7 +34,7 @@ export function BountyModal({
 }: BountyModalProps) {
   const { animeAccents } = useHunterSystem();
 
-  // Create mode state
+  // Create / Edit mode state
   const [title, setTitle] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [initialSaved, setInitialSaved] = useState("");
@@ -44,6 +44,7 @@ export function BountyModal({
   // Deposit mode state
   const [depositAmount, setDepositAmount] = useState("");
   const [depositNote, setDepositNote] = useState("");
+  const [logInLedger, setLogInLedger] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,6 +63,7 @@ export function BountyModal({
       }
       setDepositAmount("");
       setDepositNote("");
+      setLogInLedger(true);
     }
   }, [isOpen, activeGoal, mode]);
 
@@ -76,7 +78,10 @@ export function BountyModal({
       ...(mode === "edit" && activeGoal ? { id: activeGoal.id } : {}),
       title: title.trim() || "Savings Goal",
       targetAmount: target,
-      savedAmount: mode === "edit" && activeGoal ? Number(activeGoal.savedAmount) || 0 : parseFloat(initialSaved) || 0,
+      savedAmount:
+        mode === "edit" && activeGoal
+          ? Number(activeGoal.savedAmount) || 0
+          : parseFloat(initialSaved) || 0,
       category,
       deadline: deadline || undefined,
     });
@@ -89,7 +94,12 @@ export function BountyModal({
     const dep = parseFloat(depositAmount);
     if (isNaN(dep) || dep <= 0) return;
 
-    onDeposit?.(activeGoal.id, dep, depositNote.trim() || "Deposit contribution");
+    onDeposit?.(
+      activeGoal.id,
+      dep,
+      depositNote.trim() || "Deposit contribution",
+      logInLedger
+    );
     onClose();
   };
 
@@ -229,10 +239,16 @@ export function BountyModal({
             <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
               <span>Current Progress</span>
               <span className="font-numbers font-bold text-slate-900 dark:text-white">
-                {formatINR(activeGoal?.savedAmount || 0)} <span className="font-normal text-slate-400 dark:text-slate-500">of</span> {formatINR(activeGoal?.targetAmount || 0)}
+                {formatINR(activeGoal?.savedAmount || 0)}{" "}
+                <span className="font-normal text-slate-400 dark:text-slate-500">of</span>{" "}
+                {formatINR(activeGoal?.targetAmount || 0)}
               </span>
             </div>
-            <ProgressBar value={activeGoal?.savedAmount || 0} max={activeGoal?.targetAmount || 1} size="sm" />
+            <ProgressBar
+              value={activeGoal?.savedAmount || 0}
+              max={activeGoal?.targetAmount || 1}
+              size="sm"
+            />
           </div>
 
           <div>
@@ -264,6 +280,18 @@ export function BountyModal({
             onChange={(e) => setDepositNote(e.target.value)}
           />
 
+          <label className="flex items-center gap-2.5 pt-1 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={logInLedger}
+              onChange={(e) => setLogInLedger(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-brand-600 focus:ring-0 bg-white dark:bg-slate-800 accent-brand-600"
+            />
+            <span className="text-xs text-slate-600 dark:text-slate-400">
+              Also log in Transactions & deduct from Available Balance
+            </span>
+          </label>
+
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
             {onSwitchMode && activeGoal && (
               <button
@@ -291,7 +319,9 @@ export function BountyModal({
         <div className="space-y-4">
           <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/80 space-y-2.5">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Category: {activeGoal.category || "General"}</span>
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Category: {activeGoal.category || "General"}
+              </span>
               <Badge variant={isCompleted ? "income" : "brand"} size="sm">
                 {isCompleted ? "Completed" : `${progressPercent}% Saved`}
               </Badge>
@@ -304,7 +334,11 @@ export function BountyModal({
                 Target: {formatINR(activeGoal.targetAmount)}
               </span>
             </div>
-            <ProgressBar value={activeGoal.savedAmount} max={activeGoal.targetAmount || 1} size="sm" />
+            <ProgressBar
+              value={activeGoal.savedAmount}
+              max={activeGoal.targetAmount || 1}
+              size="sm"
+            />
           </div>
 
           <div>
@@ -364,10 +398,20 @@ export function BountyModal({
             <div className="flex gap-2.5 ml-auto">
               {onSwitchMode && (
                 <>
-                  <Button type="button" variant="outline" size="sm" onClick={() => onSwitchMode("edit")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSwitchMode("edit")}
+                  >
                     Edit Goal
                   </Button>
-                  <Button type="button" variant="primary" size="sm" onClick={() => onSwitchMode("deposit")}>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onSwitchMode("deposit")}
+                  >
                     + Add Deposit
                   </Button>
                 </>

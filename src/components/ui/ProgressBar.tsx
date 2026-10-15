@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "../../lib/utils";
 
 export interface ProgressBarProps {
-  value: number; // 0 to 100
+  value: number;
   max?: number;
   variant?: "brand" | "income" | "expense" | "dynamic";
   size?: "sm" | "md" | "lg";
@@ -21,30 +21,37 @@ export function ProgressBar({
   const percentage = Math.min(100, Math.max(0, Math.round((value / Math.max(1, max)) * 100)));
 
   const sizeClass = {
-    sm: "h-1.5",
-    md: "h-2",
-    lg: "h-3",
+    sm: "h-2",
+    md: "h-2.5",
+    lg: "h-3.5",
   }[size];
 
-  // Dynamic: turns green below 75%, amber between 75-90%, rose above 90%
   const getDynamicColor = () => {
-    if (percentage > 90) return "bg-rose-500";
-    if (percentage > 75) return "bg-amber-500";
-    return "bg-brand-500";
+    if (percentage > 90) return "bg-gradient-to-r from-rose-500 to-rose-600";
+    if (percentage > 75) return "bg-gradient-to-r from-amber-500 to-amber-600";
+    return "bg-gradient-to-r from-brand-500 to-indigo-500";
   };
 
   const colorClass = {
-    brand: "bg-brand-500",
-    income: "bg-emerald-500",
-    expense: "bg-rose-500",
+    brand: "bg-gradient-to-r from-brand-500 to-indigo-500",
+    income: "bg-gradient-to-r from-emerald-500 to-teal-500",
+    expense: "bg-gradient-to-r from-rose-500 to-rose-600",
     dynamic: getDynamicColor(),
   }[variant];
 
   return (
     <div className={cn("w-full", className)}>
-      <div className={cn("w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden", sizeClass)}>
+      <div
+        className={cn(
+          "w-full bg-slate-100 dark:bg-slate-800/90 rounded-full overflow-hidden shadow-[inset_0_1px_2px_rgba(15,23,42,0.12)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)] p-[1px]",
+          sizeClass
+        )}
+      >
         <div
-          className={cn("h-full rounded-full transition-all duration-300 ease-out", colorClass)}
+          className={cn(
+            "h-full rounded-full transition-all duration-300 ease-out shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
+            colorClass
+          )}
           style={{ width: `${percentage}%` }}
         />
       </div>

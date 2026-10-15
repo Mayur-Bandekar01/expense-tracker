@@ -68,3 +68,12 @@ npm run build
 
 ### 📄 License
 Distributed under the MIT License. See LICENSE for more information.
+
+### Future Scope
+ ## 🔮 Future Scope & Roadmap
+
+* **Historical Month Navigation (`YYYY-MM`):** Filter dashboard KPIs and category budget performance across previous calendar months.
+* **CSV Backup Import & Restore:** Complement the UTF-8 BOM CSV export with one-click CSV ledger import for seamless data migration.
+* **Batch Bank SMS Parsing:** Paste multiple UPI/bank SMS alerts at once to bulk-extract and log transactions in a single action.
+* **Offline-First PWA Service Worker:** Full offline caching alongside the web app manifest for instant loading on mobile home screens.
+* **Auto-Deduct Goal Contributions:** Optional toggle when depositing into a Savings Goal to automatically log a matching transfer entry in the transaction ledger.

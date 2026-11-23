@@ -8,7 +8,7 @@ import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { Button } from "../ui/Button";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useSpheres } from "../../lib/contexts/SpheresContext";
 import { cn } from "../../lib/utils";
 import { tx, textWrap } from "../../lib/textStyles";
 
@@ -27,7 +27,7 @@ export function QuestModal({
   onDelete,
   initialTransaction,
 }: QuestModalProps) {
-  const { animeAccents, spheres } = useHunterSystem();
+  const { spheres } = useSpheres();
 
   const [activeTab, setActiveTab] = useState<"manual" | "sms">("manual");
   const [type, setType] = useState<"income" | "expense">("expense");

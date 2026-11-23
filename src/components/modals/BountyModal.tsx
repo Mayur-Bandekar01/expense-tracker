@@ -9,7 +9,7 @@ import { Select } from "../ui/Select";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { ProgressBar } from "../ui/ProgressBar";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useUI } from "../../lib/contexts/UIContext";
 
 export interface BountyModalProps {
   isOpen: boolean;
@@ -32,7 +32,7 @@ export function BountyModal({
   onSwitchMode,
   activeGoal,
 }: BountyModalProps) {
-  const { animeAccents } = useHunterSystem();
+  const { animeAccents } = useUI();
 
   // Create / Edit mode state
   const [title, setTitle] = useState("");

@@ -3,7 +3,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { formatINR, cn } from "../../lib/utils";
 import { getTodayLocalDate } from "../../lib/dateUtils";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useBudgets } from "../../lib/contexts/BudgetContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
+import { useSpheres } from "../../lib/contexts/SpheresContext";
+import { useUI } from "../../lib/contexts/UIContext";
 import { CategoryBudgetRune } from "../../types/hunter";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -13,17 +16,22 @@ import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
 import { EmptyState } from "../../components/ui/EmptyState";
 
+const normalizeCat = (cat: string) => {
+  const c = (cat || "").trim().toLowerCase();
+  if (c.includes("food") || c.includes("dining") || c.includes("provision")) return "dining & food";
+  if (c.includes("transport")) return "transportation";
+  if (c.includes("utilit")) return "utilities & bills";
+  if (c.includes("salary") || c.includes("income") || c.includes("bounty")) return "salary & income";
+  if (c.includes("gear") || c.includes("shop")) return "shopping";
+  if (c.includes("rent") || c.includes("housing")) return "rent & housing";
+  return c;
+};
+
 export default function ManaReservesPage() {
-  const {
-    runes,
-    saveRune,
-    deleteRune,
-    monthlyBudget,
-    updateMonthlyBudget,
-    transactions,
-    animeAccents,
-    spheres,
-  } = useHunterSystem();
+  const { runes, monthlyBudget, saveRune, deleteRune, updateMonthlyBudget } = useBudgets();
+  const { transactions, categoryTotals, monthlyTotals } = useTransactions();
+  const { spheres } = useSpheres();
+  const { animeAccents } = useUI();
 
   const defaultYM = useMemo(() => getTodayLocalDate().slice(0, 7), []);
   const [selectedMonth, setSelectedMonth] = useState<string>(defaultYM);
@@ -60,45 +68,28 @@ export default function ManaReservesPage() {
     }
   }, [monthlyBudget]);
 
-  const normalizeCat = (cat: string) => {
-    const c = (cat || "").trim().toLowerCase();
-    if (c.includes("food") || c.includes("dining") || c.includes("provision")) return "dining & food";
-    if (c.includes("transport")) return "transportation";
-    if (c.includes("utilit")) return "utilities & bills";
-    if (c.includes("salary") || c.includes("income") || c.includes("bounty")) return "salary & income";
-    if (c.includes("gear") || c.includes("shop")) return "shopping";
-    if (c.includes("rent") || c.includes("housing")) return "rent & housing";
-    return c;
-  };
-
+  // Use pre-computed categoryTotals from TransactionContext for O(1) lookup
   const enrichedRunes = useMemo(() => {
     return (runes || []).map((rune) => {
-      const runeCat = normalizeCat(rune?.category || "");
-      const computedSpent = (transactions || [])
-        .filter((tx) => {
-          if (tx?.type !== "expense") return false;
-          if (!tx?.date || !tx.date.startsWith(selectedMonth)) return false;
-          const txCat = normalizeCat(tx?.category || "");
-          return (
-            (runeCat && txCat.includes(runeCat)) ||
-            (txCat && runeCat.includes(txCat)) ||
-            runeCat === txCat
-          );
-        })
-        .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
+      const effectiveSpent = categoryTotals.get(rune.category) || 0;
+      const limit = Number(rune?.limit) || 1;
+      const percent = Math.min(100, Math.round((effectiveSpent / limit) * 100));
 
       return {
         ...rune,
-        effectiveSpent: computedSpent,
+        effectiveSpent,
+        percent,
+        remaining: Math.max(0, limit - effectiveSpent),
+        isOverBudget: effectiveSpent > limit,
       };
     });
-  }, [runes, transactions, selectedMonth]);
+  }, [runes, categoryTotals]);
 
-  const actualMonthTotalSpent = useMemo(() => {
-    return (transactions || [])
-      .filter((tx) => tx?.type === "expense" && tx?.date && tx.date.startsWith(selectedMonth))
-      .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
-  }, [transactions, selectedMonth]);
+  const monthlyTotal = useMemo(() => {
+    return monthlyTotals.get(selectedMonth) || { income: 0, expense: 0 };
+  }, [monthlyTotals, selectedMonth]);
+
+  const actualMonthTotalSpent = monthlyTotal.expense;
 
   const totalRunesCap = (enrichedRunes || []).reduce((sum, r) => sum + (Number(r?.limit) || 0), 0);
 

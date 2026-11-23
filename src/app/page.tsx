@@ -6,22 +6,18 @@ import { StatusWindow } from "../components/finance/StatusWindow";
 import { QuestModal } from "../components/modals/QuestModal";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
-import { useHunterSystem } from "../lib/hunterContext";
+import { useTransactions } from "../lib/contexts/TransactionContext";
+import { useGoals } from "../lib/contexts/GoalsContext";
+import { useBudgets } from "../lib/contexts/BudgetContext";
 import { getTodayLocalDate } from "../lib/dateUtils";
 import { formatINR } from "../lib/utils";
 import { Transaction } from "../types/hunter";
 
 export default function StatusWindowPage() {
   const router = useRouter();
-  const {
-    transactions,
-    goals,
-    runes,
-    vitals,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-  } = useHunterSystem();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
+  const { goals } = useGoals();
+  const { runes } = useBudgets();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -53,10 +49,6 @@ export default function StatusWindowPage() {
   return (
     <>
       <StatusWindow
-        transactions={transactions}
-        goals={goals}
-        runes={runes}
-        hunterName={vitals.hunterName}
         onNavigateToQuests={() => router.push("/quests/")}
         onNavigateToBounties={() => router.push("/bounties/")}
         onNavigateToBudgets={() => router.push("/mana/")}

@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Transaction, Goal, CategoryBudgetRune } from "../../types/hunter";
 import { formatINR, formatCompactINR, cn } from "../../lib/utils";
 import { getTodayLocalDate, formatRelativeDate } from "../../lib/dateUtils";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
+import { useBudgets } from "../../lib/contexts/BudgetContext";
+import { useGoals } from "../../lib/contexts/GoalsContext";
+import { useUI } from "../../lib/contexts/UIContext";
+import { useAuth } from "../../lib/contexts/AuthContext";
+import { evaluateHunterRank } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Card, CardHeader, CardTitle } from "../ui/Card";
 import { Badge } from "../ui/Badge";
@@ -13,11 +18,7 @@ import { ProgressBar } from "../ui/ProgressBar";
 import { EmptyState } from "../ui/EmptyState";
 
 export interface StatusWindowProps {
-  transactions: Transaction[];
-  goals?: Goal[];
-  runes?: CategoryBudgetRune[];
   initialPeriod?: "today" | "week" | "month";
-  hunterName?: string;
   onNavigateToQuests?: () => void;
   onNavigateToBounties?: () => void;
   onNavigateToBudgets?: () => void;
@@ -89,9 +90,6 @@ function getCategoryIcon(category?: string, isIncome?: boolean) {
 }
 
 export function StatusWindow({
-  transactions,
-  goals = [],
-  runes = [],
   initialPeriod = "month",
   onNavigateToQuests,
   onNavigateToBounties,
@@ -101,7 +99,55 @@ export function StatusWindow({
   onNewQuest,
 }: StatusWindowProps) {
   const router = useRouter();
-  const { vitals, animeAccents, monthlyBudget } = useHunterSystem();
+  const { transactions, categoryTotals, monthlyTotals } = useTransactions();
+  const { runes, monthlyBudget } = useBudgets();
+  const { goals } = useGoals();
+  const { animeAccents } = useUI();
+  const { user } = useAuth();
+
+  // Compute vitals from transactions (previously from hunterContext)
+  const vitals = useMemo(() => {
+    const totalInflow = transactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const totalOutflow = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const netGold = totalInflow - totalOutflow;
+    const rankInfo = evaluateHunterRank(netGold);
+
+    const vitalityRatio =
+      totalInflow > 0
+        ? Math.max(0, Math.min(100, Math.round(((totalInflow - totalOutflow) / totalInflow) * 100)))
+        : 0;
+
+    const baseExp = transactions.length * 250 + Math.floor(Math.max(0, netGold) / 100);
+    const level = Math.max(1, Math.floor(baseExp / 2500) + 1);
+    const currentExp = baseExp % 2500;
+    const maxExp = 2500;
+
+    const hunterName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
+    const avatarUrl = user?.photoURL || undefined;
+
+    return {
+      rank: rankInfo.rank,
+      title: rankInfo.title,
+      auraColor: rankInfo.auraColor,
+      level,
+      currentExp,
+      maxExp,
+      vitalityRatio,
+      dailyLoginStreak: Math.min(30, 7 + (transactions.length % 15)),
+      netGold,
+      totalInflow,
+      totalOutflow,
+      avatarUrl,
+      hunterName,
+    };
+  }, [transactions, user]);
+
   const [period, setPeriod] = useState<"today" | "week" | "month">(initialPeriod);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
@@ -165,20 +211,9 @@ export function StatusWindow({
     const currentMonth = getTodayLocalDate().slice(0, 7);
     return (runes || []).map((rune) => {
       const runeCat = normalizeCat(rune?.category || "");
-      const computedSpent = (transactions || [])
-        .filter((tx) => {
-          if (tx?.type !== "expense") return false;
-          if (!tx?.date || !tx.date.startsWith(currentMonth)) return false;
-          const txCat = normalizeCat(tx?.category || "");
-          return (
-            (runeCat && txCat.includes(runeCat)) ||
-            (txCat && runeCat.includes(txCat)) ||
-            runeCat === txCat
-          );
-        })
-        .reduce((sum, tx) => sum + (Number(tx?.amount) || 0), 0);
+      // Use pre-computed categoryTotals from TransactionContext for O(1) lookup
+      const effectiveSpent = categoryTotals.get(rune.category) || 0;
 
-      const effectiveSpent = computedSpent;
       const limit = Number(rune?.limit) || 1;
       const percent = Math.min(100, Math.round((effectiveSpent / limit) * 100));
 
@@ -190,13 +225,12 @@ export function StatusWindow({
         isOverBudget: effectiveSpent > limit,
       };
     });
-  }, [runes, transactions]);
+  }, [runes, categoryTotals]);
 
   const monthlyBudgetSummary = useMemo(() => {
     const currentMonth = getTodayLocalDate().slice(0, 7);
-    const currentMonthSpent = (transactions || [])
-      .filter((t) => t.type === "expense" && (t.date || "").startsWith(currentMonth))
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const monthlyTotal = monthlyTotals.get(currentMonth) || { income: 0, expense: 0 };
+    const currentMonthSpent = monthlyTotal.expense;
 
     const totalRunesLimit = activeBudgets.reduce((sum, b) => sum + (Number(b.limit) || 0), 0);
     const totalLimit =
@@ -205,7 +239,7 @@ export function StatusWindow({
     const percent = totalLimit > 0 ? Math.min(100, Math.round((totalSpent / totalLimit) * 100)) : 0;
     const remaining = Math.max(0, totalLimit - totalSpent);
     return { totalLimit, totalSpent, percent, remaining };
-  }, [activeBudgets, monthlyBudget, transactions]);
+  }, [activeBudgets, monthlyBudget, monthlyTotals]);
 
   const fourteenDayBars = useMemo(() => {
     const bars: { label: string; date: string; amount: number; isToday: boolean }[] = [];

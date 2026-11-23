@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { Transaction, QuestDifficulty } from "../../types/hunter";
 import { formatINR, cn } from "../../lib/utils";
 import { formatDisplayDate } from "../../lib/dateUtils";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useUI } from "../../lib/contexts/UIContext";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -92,7 +92,7 @@ function getCategoryIcon(category: string, isIncome: boolean) {
 }
 
 export function QuestCard({ transaction, onClick, onDelete }: QuestCardProps) {
-  const { animeAccents } = useHunterSystem();
+  const { animeAccents } = useUI();
   const isIncome = transaction.type === "income";
   const difficulty = transaction.difficulty || calculateQuestDifficulty(transaction.amount);
 

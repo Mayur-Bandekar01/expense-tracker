@@ -6,6 +6,7 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
@@ -90,6 +91,16 @@ export async function updateTransaction(
 
 export async function deleteTransaction(uid: string, id: string): Promise<void> {
   await deleteDoc(doc(db, "users", uid, "transactions", id));
+}
+
+export async function deleteAllTransactions(uid: string): Promise<void> {
+  // Note: Firestore doesn't have a native "delete all documents in collection" function
+  // We need to get all documents and delete them individually
+  // For a simpler approach with large collections, consider using a Cloud Function
+  const coll = collection(db, "users", uid, "transactions");
+  const snap = await getDocs(coll);
+  const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
+  await Promise.all(deletePromises);
 }
 
 export function watchTransactions(

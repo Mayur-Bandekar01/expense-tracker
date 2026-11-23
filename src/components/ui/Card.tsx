@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "../../lib/utils";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export type CardVariant = "default" | "card" | "subtle" | "interactive";
 
@@ -11,7 +12,7 @@ const variantStyles: Record<CardVariant, string> = {
   default: "card-3d",
   card: "card-3d",
   subtle:
-    "bg-surface-subtle dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 shadow-inner",
+    "bg-surface-subtle dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60",
   interactive: "card-3d cursor-pointer",
 };
 
@@ -36,7 +37,7 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 mb-4",
+        "flex items-center justify-between pb-3.5 mb-4",
         className
       )}
       {...props}
@@ -54,7 +55,8 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "text-base font-semibold text-text-primary dark:text-white tracking-tight",
+        tx("title3"),
+        textWrap.heading,
         className
       )}
       {...props}
@@ -70,7 +72,7 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn("text-xs text-text-secondary dark:text-slate-400 mt-0.5", className)} {...props}>
+    <p className={cn(tx("caption2"), textWrap.body, className)} {...props}>
       {children}
     </p>
   );

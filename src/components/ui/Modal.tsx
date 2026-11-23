@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { cn } from "../../lib/utils";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export interface ModalProps {
   isOpen: boolean;
@@ -46,7 +47,7 @@ export function Modal({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/40 dark:bg-black/70 backdrop-blur-[2px] transition-opacity duration-200"
+        className="fixed inset-0 bg-slate-900/40 dark:bg-black/70 backdrop-blur-[2px] transition-opacity duration-300 ease-base"
         aria-hidden="true"
       />
 
@@ -55,26 +56,26 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-modal z-10 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150",
+          "relative w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-modal z-10 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-500 ease-base",
           maxWidthClass
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 mb-5">
+        <div className="flex items-start justify-between pb-3.5 mb-5">
           <div>
             {title && (
-              <h2 className="text-lg font-semibold text-text-primary dark:text-white tracking-tight">
+              <h2 className={cn(tx("title2"), textWrap.heading, "text-slate-900 dark:text-white")}>
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-xs text-text-secondary dark:text-slate-400 mt-0.5">{description}</p>
+              <p className={cn(tx("caption2"), textWrap.body, "text-slate-500 dark:text-slate-400 mt-1")}>{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-300 ease-base"
             aria-label="Close dialog"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

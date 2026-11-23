@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { QuestLog } from "../../components/finance/QuestLog";
+import { VirtualizedQuestLog } from "../../components/finance/VirtualizedQuestLog";
 import { QuestModal } from "../../components/modals/QuestModal";
 import { Transaction } from "../../types/hunter";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
 import { getTodayLocalDate } from "../../lib/dateUtils";
 import { Button } from "../../components/ui/Button";
 
 export default function QuestLogPage() {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction, animeAccents } = useHunterSystem();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
@@ -63,7 +63,7 @@ export default function QuestLogPage() {
         </Button>
       </div>
 
-      <QuestLog
+      <VirtualizedQuestLog
         transactions={transactions}
         onDeleteTransaction={handleDelete}
         onSelectTransaction={(tx: Transaction) => {

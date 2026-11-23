@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn, formatCompactINR } from "../../lib/utils";
-import { useHunterSystem } from "../../lib/hunterContext";
-import { signOutUser } from "../../lib/auth";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
+import { useAuth } from "../../lib/contexts/AuthContext";
+import { useUI } from "../../lib/contexts/UIContext";
+import { usePacts } from "../../lib/contexts/PactsContext";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
+import { evaluateHunterRank } from "../../lib/utils";
 
 interface StatusLayoutProps {
   children: React.ReactNode;
@@ -28,16 +31,63 @@ interface NavSection {
 
 export function StatusLayout({ children }: StatusLayoutProps) {
   const pathname = usePathname();
-  const { user, vitals, animeAccents, pacts } = useHunterSystem();
+  const { transactions } = useTransactions();
+  const { user, authLoaded, signOut } = useAuth();
+  const { animeAccents } = useUI();
+  const { pacts } = usePacts();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Compute vitals from transactions (previously from hunterContext)
+  const vitals = useMemo(() => {
+    const totalInflow = transactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const totalOutflow = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const netGold = totalInflow - totalOutflow;
+    const rankInfo = evaluateHunterRank(netGold);
+
+    const vitalityRatio =
+      totalInflow > 0
+        ? Math.max(0, Math.min(100, Math.round(((totalInflow - totalOutflow) / totalInflow) * 100)))
+        : 0;
+
+    const baseExp = transactions.length * 250 + Math.floor(Math.max(0, netGold) / 100);
+    const level = Math.max(1, Math.floor(baseExp / 2500) + 1);
+    const currentExp = baseExp % 2500;
+    const maxExp = 2500;
+
+    const userName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
+    const avatarUrl = user?.photoURL || undefined;
+
+    return {
+      rank: rankInfo.rank,
+      title: rankInfo.title,
+      auraColor: rankInfo.auraColor,
+      level,
+      currentExp,
+      maxExp,
+      vitalityRatio,
+      dailyLoginStreak: Math.min(30, 7 + (transactions.length % 15)),
+      netGold,
+      totalInflow,
+      totalOutflow,
+      avatarUrl,
+      hunterName: userName,
+    };
+  }, [transactions, user]);
 
   const activePactsCount = (pacts || []).filter((p) => p && p.isActive).length;
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOutUser();
+      await signOut();
     } catch (err) {
       console.error("[StatusLayout] Sign out error:", err);
     } finally {
@@ -180,7 +230,7 @@ export function StatusLayout({ children }: StatusLayoutProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
               />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>

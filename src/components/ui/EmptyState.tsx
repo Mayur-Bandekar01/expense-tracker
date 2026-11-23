@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "./Button";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export interface EmptyStateProps {
   title: string;
@@ -28,11 +29,11 @@ export function EmptyState({
         className
       )}
     >
-      <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-100 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-3 text-xl shadow-subtle">
-        {icon || "🍡"}
+      <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-100 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400 mb-4 text-xl shadow-subtle">
+        {icon}
       </div>
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mb-4 leading-relaxed">{description}</p>
+      <h3 className={cn(tx("title3"), textWrap.heading, "text-slate-900 dark:text-white")}>{title}</h3>
+      <p className={cn(tx("body5"), textWrap.body, "text-slate-500 dark:text-slate-400 mt-2 max-w-sm mb-4 leading-relaxed")}>{description}</p>
       {action ? (
         action
       ) : actionLabel && onAction ? (

@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "../../lib/utils";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export interface ProgressBarProps {
   value: number;
@@ -22,20 +23,20 @@ export function ProgressBar({
 
   const sizeClass = {
     sm: "h-2",
-    md: "h-2.5",
-    lg: "h-3.5",
+    md: "h-3",
+    lg: "h-4",
   }[size];
 
   const getDynamicColor = () => {
-    if (percentage > 90) return "bg-gradient-to-r from-rose-500 to-rose-600";
-    if (percentage > 75) return "bg-gradient-to-r from-amber-500 to-amber-600";
-    return "bg-gradient-to-r from-brand-500 to-indigo-500";
+    if (percentage > 90) return "bg-rose-500";
+    if (percentage > 75) return "bg-amber-500";
+    return "bg-brand-500";
   };
 
   const colorClass = {
-    brand: "bg-gradient-to-r from-brand-500 to-indigo-500",
-    income: "bg-gradient-to-r from-emerald-500 to-teal-500",
-    expense: "bg-gradient-to-r from-rose-500 to-rose-600",
+    brand: "bg-brand-500",
+    income: "bg-emerald-500",
+    expense: "bg-rose-500",
     dynamic: getDynamicColor(),
   }[variant];
 
@@ -49,14 +50,14 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            "h-full rounded-full transition-all duration-300 ease-out shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
+            "h-full rounded-full transition-all duration-500 ease-base",
             colorClass
           )}
-          style={{ width: `${percentage}%` }}
+          style={{ transform: `translateX(-${100 - percentage}%)` }}
         />
       </div>
       {showLabel && (
-        <div className="flex justify-between items-center text-xs text-text-secondary dark:text-slate-400 mt-1 font-mono">
+        <div className={cn(tx("caption3"), textWrap.body, "flex justify-between items-center text-text-secondary dark:text-slate-400 mt-1 font-mono")}>
           <span>{percentage}%</span>
         </div>
       )}

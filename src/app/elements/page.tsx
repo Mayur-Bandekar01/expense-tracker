@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { CategorySphere, BreathingStyle } from "../../types/hunter";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useSpheres } from "../../lib/contexts/SpheresContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
 import { DEFAULT_CATEGORIES } from "../../lib/mockData";
 import { formatINR, cn } from "../../lib/utils";
 import { Card } from "../../components/ui/Card";
@@ -13,8 +14,20 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { EmptyState } from "../../components/ui/EmptyState";
 
+const normalizeCat = (c: string) => {
+  const lower = (c || "").trim().toLowerCase();
+  if (lower.includes("food") || lower.includes("dining") || lower.includes("provision")) return "dining & food";
+  if (lower.includes("transport")) return "transportation";
+  if (lower.includes("utilit")) return "utilities & bills";
+  if (lower.includes("salary") || lower.includes("bounty") || lower.includes("income")) return "salary & income";
+  if (lower.includes("gear") || lower.includes("shop")) return "shopping";
+  if (lower.includes("rent") || lower.includes("housing")) return "rent & housing";
+  return lower;
+};
+
 export default function ElementSpheresPage() {
-  const { spheres, saveSphere, deleteSphere, transactions, animeAccents } = useHunterSystem();
+  const { spheres, saveSphere, deleteSphere } = useSpheres();
+  const { transactions } = useTransactions();
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🏷️");
   const [element, setElement] = useState<BreathingStyle>("water");
@@ -59,17 +72,6 @@ export default function ElementSpheresPage() {
   }, [spheres]);
 
   // Normalized category matching for stats
-  const normalizeCat = (c: string) => {
-    const lower = (c || "").trim().toLowerCase();
-    if (lower.includes("food") || lower.includes("dining") || lower.includes("provision")) return "dining & food";
-    if (lower.includes("transport")) return "transportation";
-    if (lower.includes("utilit")) return "utilities & bills";
-    if (lower.includes("salary") || lower.includes("bounty") || lower.includes("income")) return "salary & income";
-    if (lower.includes("gear") || lower.includes("shop")) return "shopping";
-    if (lower.includes("rent") || lower.includes("housing")) return "rent & housing";
-    return lower;
-  };
-
   const getStatsForCategory = (catName: string) => {
     const targetKey = normalizeCat(catName);
     let count = 0;
@@ -284,17 +286,6 @@ export default function ElementSpheresPage() {
                     )}
                   </div>
                 </div>
-
-                {animeAccents && (
-                  <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">
-                      Color: {s.element}
-                    </span>
-                    <Badge variant="brand" size="sm">
-                      {s.element.toUpperCase()}
-                    </Badge>
-                  </div>
-                )}
               </Card>
             );
           })}

@@ -4,7 +4,9 @@ import React, { useState, useRef } from "react";
 import { signOutUser } from "../../lib/auth";
 import { exportToCSV, parseCSVTransactions } from "../../lib/export";
 import { parseSMS, ParsedSMSResult } from "../../lib/smsParser";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
+import { useAuth } from "../../lib/contexts/AuthContext";
+import { useUI } from "../../lib/contexts/UIContext";
 import { getTodayLocalDate } from "../../lib/dateUtils";
 import { useTheme } from "../../lib/themeContext";
 import { Card } from "../../components/ui/Card";
@@ -13,17 +15,9 @@ import { Button } from "../../components/ui/Button";
 import { ThemeSwitcher } from "../../components/ui/ThemeSwitcher";
 
 export default function HunterArchivesPage() {
-  const {
-    user,
-    transactions,
-    audioEnabled,
-    toggleAudio,
-    animeAccents,
-    toggleAnimeAccents,
-    resetToDemoData,
-    addTransaction,
-  } = useHunterSystem();
-
+  const { transactions, addTransaction, resetToDemoData } = useTransactions();
+  const { user, authLoaded, signOut } = useAuth();
+  const { audioEnabled, toggleAudio, animeAccents, toggleAnimeAccents } = useUI();
   const { theme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,9 +32,12 @@ export default function HunterArchivesPage() {
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
+      setAuthLoading(true);
+      await signOut();
     } catch (err) {
       console.error("Sign out error:", err);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -209,10 +206,7 @@ export default function HunterArchivesPage() {
                 variant="danger"
                 size="sm"
                 disabled={authLoading}
-                onClick={async () => {
-                  setAuthLoading(true);
-                  await handleSignOut();
-                }}
+                onClick={handleSignOut}
               >
                 {authLoading ? "Signing Out..." : "Sign Out"}
               </Button>

@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 :root {
-  --font-inter: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", 'Inter', 'Segoe UI', Roboto, sans-serif;
   --bg-app: #f4f6fb;
   --bg-card: #ffffff;
   --bg-card-subtle: #f1f5f9;
@@ -18,9 +17,9 @@
 }
 
 .dark {
-  --bg-app: #090d16;
-  --bg-card: #131926;
-  --bg-card-subtle: #1c2436;
+  --bg-app: #000000;
+  --bg-card: #181818;
+  --bg-card-subtle: #1f1f1f;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-active: #818cf8;
   --text-main: #f8fafc;
@@ -31,28 +30,21 @@
   --color-expense: #fb7185;
 }
 
-/* ── Apple iOS Minimalist Baseline with Ambient Depth ─────────── */
+/* ── Baseline with Ambient Depth ─────────── */
 body {
   background-color: var(--bg-app);
   color: var(--text-main);
-  font-family: var(--font-inter);
   min-height: 100vh;
   overflow-x: hidden;
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image: 
-    radial-gradient(ellipse at 50% -10%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 85% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .dark body {
-  background-color: #090d16;
-  color: #f8fafc;
-  background-image: 
-    radial-gradient(ellipse at 50% -10%, rgba(99, 102, 241, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse at 85% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+  background-color: var(--bg-app);
+  color: var(--text-main);
 }
 
 /* ── 3D Tactile Surface Cards (Zero-JS Specular Bevel) ────────── */
@@ -164,6 +156,14 @@ a:focus-visible {
   color-scheme: dark;
 }
 
+/* ── Text Wrap Utilities (B1) ──────────────────────────────────── */
+.text-wrap-balance {
+  text-wrap: balance;
+}
+.text-wrap-pretty {
+  text-wrap: pretty;
+}
+
 /* ── Reduced Motion Accessibility ────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -179,4 +179,15 @@ a:focus-visible {
   .holo-panel:hover {
     transform: none !important;
   }
+}
+
+/* ── Base Motion Curve (B7) ───────────────────────────────────── */
+.ease-base {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.duration-base {
+  transition-duration: 500ms;
+}
+.duration-color {
+  transition-duration: 300ms;
 }

@@ -4,7 +4,10 @@ import React, { useState, useMemo } from "react";
 import { PerpetualPact } from "../../types/hunter";
 import { formatINR, cn } from "../../lib/utils";
 import { getTodayLocalDate, formatDisplayDate } from "../../lib/dateUtils";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { usePacts } from "../../lib/contexts/PactsContext";
+import { useSpheres } from "../../lib/contexts/SpheresContext";
+import { useAuth } from "../../lib/contexts/AuthContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -13,8 +16,27 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { EmptyState } from "../../components/ui/EmptyState";
 
+const getMonthlyEquivalent = (amount: number, freq: string) => {
+  switch (freq) {
+    case "DAILY":
+      return amount * 30;
+    case "WEEKLY":
+      return amount * 4.33;
+    case "MONTHLY":
+      return amount;
+    case "ANNUAL":
+      return amount / 12;
+    default:
+      return amount;
+  }
+};
+
 export default function PerpetualPactsPage() {
-  const { pacts, savePact, togglePact, deletePact, executePact, user, spheres } = useHunterSystem();
+  const { pacts, savePact, togglePact, deletePact, executePact } = usePacts();
+  const { spheres } = useSpheres();
+  const { user } = useAuth();
+  const { addTransaction } = useTransactions();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [payingPact, setPayingPact] = useState<PerpetualPact | null>(null);
   const [deletingPact, setDeletingPact] = useState<{ id: string; name: string } | null>(null);
@@ -28,21 +50,6 @@ export default function PerpetualPactsPage() {
   const [nextDate, setNextDate] = useState(getTodayLocalDate());
 
   const todayStr = useMemo(() => getTodayLocalDate(), []);
-
-  const getMonthlyEquivalent = (amount: number, freq: string) => {
-    switch (freq) {
-      case "DAILY":
-        return amount * 30;
-      case "WEEKLY":
-        return amount * 4.33;
-      case "MONTHLY":
-        return amount;
-      case "ANNUAL":
-        return amount / 12;
-      default:
-        return amount;
-    }
-  };
 
   const activePacts = useMemo(() => (pacts || []).filter((p) => p && p.isActive), [pacts]);
 
@@ -394,7 +401,7 @@ export default function PerpetualPactsPage() {
             <strong className="text-slate-900 dark:text-white font-numbers font-bold">
               {formatINR(payingPact?.goldCost || 0)}
             </strong>{" "}
-            for <strong>&quot;{payingPact?.pactTitle}&quot;</strong> into your transactions ledger?
+            for <strong>{payingPact?.pactTitle}</strong> into your transactions ledger?
           </p>
 
           <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
@@ -436,7 +443,7 @@ export default function PerpetualPactsPage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-200">
-            Permanently delete <strong>&quot;{deletingPact?.name}&quot;</strong>?
+            Permanently delete <strong>{deletingPact?.name}</strong>?
           </p>
           <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900/60 text-xs text-rose-800 dark:text-rose-300">
             This will remove the recurring bill and automatically wipe out all associated transaction records from your ledger and database.

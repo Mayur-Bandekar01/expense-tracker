@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { Goal } from "../../types/hunter";
 import { formatINR, cn } from "../../lib/utils";
 import { formatDisplayDate } from "../../lib/dateUtils";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useUI } from "../../lib/contexts/UIContext";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -22,7 +22,7 @@ export interface BountyCardProps {
  * Single Savings Goal Card
  */
 export function BountyCard({ goal, onDeposit, onEdit, onViewHistory }: BountyCardProps) {
-  const { animeAccents } = useHunterSystem();
+  const { animeAccents } = useUI();
   const saved = Number(goal?.savedAmount) || 0;
   const target = Number(goal?.targetAmount) || 0;
   const isCompleted = target > 0 && saved >= target;
@@ -147,7 +147,7 @@ export function BountyBoard({
   onEdit,
   onViewHistory,
 }: BountyBoardProps) {
-  const { animeAccents } = useHunterSystem();
+  const { animeAccents } = useUI();
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
 
   // Summary aggregates

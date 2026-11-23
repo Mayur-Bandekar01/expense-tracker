@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useAuth } from "../../lib/contexts/AuthContext";
+import { useUI } from "../../lib/contexts/UIContext";
 import { signInWithGoogle, formatAuthError } from "../../lib/auth";
 import { useTheme } from "../../lib/themeContext";
 import { LoginIllustration } from "./LoginIllustration";
@@ -12,7 +13,8 @@ interface AuthGateProps {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
-  const { user, authLoaded } = useHunterSystem();
+  const { user, authLoaded } = useAuth();
+  const { animeAccents } = useUI();
   const { theme, setTheme } = useTheme();
   const [signingIn, setSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);

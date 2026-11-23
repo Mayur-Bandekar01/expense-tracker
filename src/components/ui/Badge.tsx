@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "../../lib/utils";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: "brand" | "income" | "expense" | "neutral" | "warning" | "cyan";
@@ -14,8 +15,8 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const sizeStyles = {
-    sm: "text-[11px] px-2 py-0.5",
-    md: "text-xs px-2.5 py-1",
+    sm: tx("caption3"),
+    md: tx("caption1"),
   }[size];
 
   const variantStyles = {
@@ -30,8 +31,9 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium rounded-full select-none",
+        "inline-flex items-center font-medium rounded-full select-none px-2 py-0.5",
         sizeStyles,
+        textWrap.body,
         variantStyles,
         className
       )}

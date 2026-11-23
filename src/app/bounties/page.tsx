@@ -4,13 +4,14 @@ import React, { useState } from "react";
 import { BountyBoard } from "../../components/finance/BountyBoard";
 import { BountyModal } from "../../components/modals/BountyModal";
 import { Goal } from "../../types/hunter";
-import { useHunterSystem } from "../../lib/hunterContext";
+import { useGoals } from "../../lib/contexts/GoalsContext";
+import { useTransactions } from "../../lib/contexts/TransactionContext";
 import { getTodayLocalDate } from "../../lib/dateUtils";
 import { Button } from "../../components/ui/Button";
 
 export default function BountiesPage() {
-  const { goals, addGoal, updateGoal, depositToGoal, deleteGoal, addTransaction } =
-    useHunterSystem();
+  const { goals, addGoal, updateGoal, depositToGoal, deleteGoal } = useGoals();
+  const { addTransaction } = useTransactions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "deposit" | "history">("create");
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);

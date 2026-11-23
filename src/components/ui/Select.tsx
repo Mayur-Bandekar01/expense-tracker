@@ -2,6 +2,7 @@
 
 import React, { forwardRef } from "react";
 import { cn } from "../../lib/utils";
+import { tx, textWrap } from "../../lib/textStyles";
 
 export interface SelectOption {
   value: string;
@@ -22,7 +23,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+          <label htmlFor={selectId} className={cn(tx("caption3"), textWrap.body, "text-slate-700 dark:text-slate-300 mb-1.5 block")}>
             {label}
           </label>
         )}
@@ -31,7 +32,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             className={cn(
-              "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 pr-9 transition-all duration-150 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer",
+              tx("body5"),
+              textWrap.body,
+              "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 pr-9 transition-all duration-300 ease-base focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer",
               error && "border-rose-400 dark:border-rose-500 focus:border-rose-500",
               className
             )}
@@ -45,16 +48,16 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 ))
               : children}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 dark:text-slate-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 dark:text-slate-500">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
         {error ? (
-          <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">{error}</p>
+          <p className={cn(tx("caption4"), textWrap.body, "mt-1 text-rose-500 dark:text-rose-400")}>{error}</p>
         ) : helperText ? (
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+          <p className={cn(tx("caption4"), textWrap.body, "mt-1 text-slate-500 dark:text-slate-400")}>{helperText}</p>
         ) : null}
       </div>
     );

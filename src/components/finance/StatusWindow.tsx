@@ -287,7 +287,7 @@ export function StatusWindow({
                 type="button"
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 capitalize",
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 capitalize",
                   period === p
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-subtle dark:border dark:border-slate-700"
                     : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -346,7 +346,7 @@ export function StatusWindow({
             <div
               suppressHydrationWarning
               className={cn(
-                "text-3xl md:text-4xl font-extrabold tracking-tight font-sans",
+                "text-3xl md:text-4xl font-bold tracking-tight font-sans",
                 availableBalance >= 0 ? "text-slate-900 dark:text-white" : "text-rose-600 dark:text-rose-400"
               )}
             >
@@ -443,7 +443,7 @@ export function StatusWindow({
         </div>
 
         {animeAccents && (
-          <div className="bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl md:rounded-3xl p-5 shadow-card flex flex-col justify-between">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl md:rounded-3xl p-5 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-lg shadow-subtle">
@@ -486,7 +486,7 @@ export function StatusWindow({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Net Flow</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Net flow</span>
             <Badge variant={totals.net >= 0 ? "income" : "expense"} size="sm">
               {totals.net >= 0 ? "Surplus" : "Deficit"}
             </Badge>
@@ -523,7 +523,7 @@ export function StatusWindow({
 
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Inflow</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total inflow</span>
             <span className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-center text-xs font-bold">
               ↓
             </span>
@@ -541,13 +541,13 @@ export function StatusWindow({
           </div>
           <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
             <span>Status</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Active Inflow</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Active inflow</span>
           </div>
         </Card>
 
         <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Outflow</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total outflow</span>
             <span className="w-6 h-6 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800/60 flex items-center justify-center text-xs font-bold">
               ↑
             </span>
@@ -564,7 +564,7 @@ export function StatusWindow({
             </p>
           </div>
           <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>Burn Ratio</span>
+            <span>Burn ratio</span>
             <span suppressHydrationWarning className="text-slate-700 dark:text-slate-300 font-semibold">
               {totals.income > 0 ? `${Math.round((totals.spent / totals.income) * 100)}%` : "N/A"}
             </span>

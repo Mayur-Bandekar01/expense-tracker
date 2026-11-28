@@ -135,10 +135,9 @@ const config: Config = {
       },
 
       fontFamily: {
-        sans: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "SF Pro Text", "Inter", "sans-serif"],
-        rpg: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "SF Pro Display", "Inter", "sans-serif"],
-        numbers: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "tabular-nums", "Inter", "sans-serif"],
-        tech: ["var(--font-inter)", "-apple-system", "monospace"],
+        sans: ["var(--font-geist-sans)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SF Mono", "Monaco", "Consolas", "monospace"],
+        numbers: ["var(--font-geist-mono)", "ui-monospace", "SF Mono", "tabular-nums", "monospace"],
       },
 
       boxShadow: {

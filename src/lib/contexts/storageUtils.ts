@@ -39,13 +39,40 @@ export function loadFromStorage<T>(key: string, defaultValue: T): T {
   }
 }
 
-export function saveToStorage<T>(key: string, value: T): void {
-  if (typeof window === "undefined") return;
+export function saveToStorage<T>(key: string, value: T): boolean {
+  if (typeof window === "undefined") return false;
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch (_e) {
-    // Silently fail on quota exceeded or private browsing
+    return true;
+  } catch (e) {
+    // Quota exceeded or private browsing - warn so UI can surface it
+    console.warn(`[storageUtils] Failed to save "${key}":`, e instanceof Error ? e.message : e);
+    return false;
   }
+}
+
+/** Normalizes old or malformed single-record values into the collection shape. */
+export function normalizeRecordArray<T extends { id?: string }>(value: unknown): T[] {
+  if (Array.isArray(value)) return value.filter((item) => item != null) as T[];
+  if (value && typeof value === "object" && "id" in value) return [value as T];
+  return [];
+}
+
+/** Merges two record collections by id, with `preferred` taking precedence. */
+export function mergeRecordsById<T extends { id?: string }>(preferred: T[], fallback: T[]): T[] {
+  const records = new Map<string, T>();
+  const anonymous: T[] = [];
+
+  for (const record of fallback) {
+    if (record && typeof record.id === "string" && record.id) records.set(record.id, record);
+    else if (record) anonymous.push(record);
+  }
+  for (const record of preferred) {
+    if (record && typeof record.id === "string" && record.id) records.set(record.id, record);
+    else if (record) anonymous.push(record);
+  }
+
+  return [...records.values(), ...anonymous];
 }
 
 /**

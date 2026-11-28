@@ -4,8 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { PerpetualPact } from "../../types/hunter";
 import { getTodayLocalDate } from "../dateUtils";
 import { watchPerpetualPacts, savePerpetualPact as fsSavePact, deletePerpetualPact as fsDeletePact } from "../firestore";
-import { loadFromStorage, saveToStorage, getUserStorageKey, STORAGE_KEYS } from "./storageUtils";
-import { getCurrentUser } from "../auth";
+import {
+  loadFromStorage,
+  saveToStorage,
+  getUserStorageKey,
+  STORAGE_KEYS,
+  normalizeRecordArray,
+  mergeRecordsById,
+} from "./storageUtils";
+import { useAuth } from "./AuthContext";
 import { useTransactions } from "./TransactionContext";
 
 interface PactsContextType {
@@ -20,62 +27,63 @@ const PactsContext = createContext<PactsContextType | null>(null);
 
 export function PactsProvider({ children }: { children: React.ReactNode }) {
   const [pacts, setPacts] = useState<PerpetualPact[]>([]);
-  const [storageLoaded, setStorageLoaded] = useState(false);
-  const { addTransaction } = useTransactions();
+  const [loadedUid, setLoadedUid] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const { addTransaction, transactions, deleteTransaction } = useTransactions();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const activeUid = getCurrentUser()?.uid;
-      const pactsKey = getUserStorageKey(activeUid, STORAGE_KEYS.PACTS);
-      const storedPacts = loadFromStorage<PerpetualPact[]>(pactsKey, []);
-      setPacts(storedPacts);
-    } catch (_e) {}
-    setStorageLoaded(true);
-  }, []);
+    const pactsKey = getUserStorageKey(uid, STORAGE_KEYS.PACTS);
+    const storedPacts = normalizeRecordArray<PerpetualPact>(loadFromStorage<unknown>(pactsKey, []));
+    setPacts(storedPacts);
+    setLoadedUid(uid ?? null);
+  }, [uid]);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const uid = user.uid;
+    if (!uid) return;
     const uKey = (k: string) => getUserStorageKey(uid, k);
+    let isInitialSnapshot = true;
 
     const unsub = watchPerpetualPacts(uid, (fsPacts) => {
       if (!Array.isArray(fsPacts)) return;
-      setPacts(fsPacts);
-      saveToStorage(uKey(STORAGE_KEYS.PACTS), fsPacts);
+      const localPacts = normalizeRecordArray<PerpetualPact>(
+        loadFromStorage<unknown>(uKey(STORAGE_KEYS.PACTS), [])
+      );
+      const activePacts = isInitialSnapshot ? mergeRecordsById(fsPacts, localPacts) : fsPacts;
+      const shouldMigrateLocal = isInitialSnapshot;
+      isInitialSnapshot = false;
+      setPacts(activePacts);
+      saveToStorage(uKey(STORAGE_KEYS.PACTS), activePacts);
+
+      if (shouldMigrateLocal) {
+        const cloudIds = new Set(fsPacts.map((pact) => pact.id));
+        activePacts
+          .filter((pact) => !cloudIds.has(pact.id))
+          .forEach((pact) => {
+            void fsSavePact(uid, pact).catch((err) =>
+              console.error("Firestore pact migration error:", err)
+            );
+          });
+      }
     });
 
     return () => unsub();
-  }, [getCurrentUser()?.uid]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), pacts);
-  }, [pacts, storageLoaded]);
+  }, [pacts, loadedUid, uid]);
 
   const savePact = useCallback(
     async (pactData: Partial<PerpetualPact>): Promise<void> => {
-      let targetPact: PerpetualPact | undefined;
-      setPacts((prev) => {
-        if (pactData.id && prev.some((p) => p.id === pactData.id)) {
-          const next = prev.map((p) => {
-            if (p.id === pactData.id) {
-              targetPact = { ...p, ...pactData } as PerpetualPact;
-              return targetPact;
-            }
-            return p;
-          });
-          const uid = getCurrentUser()?.uid;
-          if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), next);
-          return next;
-        }
-        const activeUid = getCurrentUser()?.uid || "guest";
-        const newPact: PerpetualPact = {
+      const existingPact = pactData.id ? pacts.find((pact) => pact.id === pactData.id) : undefined;
+      const targetPact: PerpetualPact = existingPact
+        ? ({ ...existingPact, ...pactData } as PerpetualPact)
+        : {
           id: pactData.id || `pact-${Date.now()}`,
-          uid: activeUid,
+          uid: uid || "guest",
           pactTitle: pactData.pactTitle || "New Pact",
           goldCost: Number(pactData.goldCost) || 999,
           frequency: pactData.frequency || "MONTHLY",
@@ -83,67 +91,48 @@ export function PactsProvider({ children }: { children: React.ReactNode }) {
           category: pactData.category || "Utilities",
           isActive: pactData.isActive ?? true,
         };
-        targetPact = newPact;
-        const next = [...prev, newPact];
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), next);
-        return next;
-      });
+      setPacts((prev) =>
+        existingPact
+          ? prev.map((pact) => (pact.id === targetPact.id ? targetPact : pact))
+          : [...prev, targetPact]
+      );
 
-      const activeUser = getCurrentUser();
-      if (activeUser && targetPact) {
+      if (uid) {
         try {
-          await fsSavePact(activeUser.uid, targetPact);
+          await fsSavePact(uid, targetPact);
         } catch (err) {
           console.error("Firestore savePact error:", err);
         }
       }
     },
-    []
+    [pacts, uid]
   );
 
   const togglePact = useCallback(
     async (id: string): Promise<void> => {
-      let updatedPact: PerpetualPact | undefined;
-      setPacts((prev) => {
-        const next = prev.map((p) => {
-          if (p.id !== id) return p;
-          updatedPact = { ...p, isActive: !p.isActive };
-          return updatedPact;
-        });
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), next);
-        return next;
-      });
+      const currentPact = pacts.find((pact) => pact.id === id);
+      if (!currentPact) return;
+      const updatedPact = { ...currentPact, isActive: !currentPact.isActive };
+      setPacts((prev) => prev.map((pact) => (pact.id === id ? updatedPact : pact)));
 
-      const activeUser = getCurrentUser();
-      if (activeUser && updatedPact) {
+      if (uid) {
         try {
-          await fsSavePact(activeUser.uid, updatedPact);
+          await fsSavePact(uid, updatedPact);
         } catch (err) {
           console.error("Firestore togglePact error:", err);
         }
       }
     },
-    []
+    [pacts, uid]
   );
 
   const deletePact = useCallback(
     async (id: string, wipeTransactions: boolean = true): Promise<void> => {
-      const activeUser = getCurrentUser();
-      const uid = activeUser?.uid;
       const targetPact = pacts.find((p) => p.id === id);
 
-      setPacts((prev) => {
-        const next = (prev || []).filter((p) => p && p.id !== id);
-        if (uid) {
-          saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.PACTS), next);
-        }
-        saveToStorage(STORAGE_KEYS.PACTS, next);
-        return next;
-      });
+      setPacts((prev) => (prev || []).filter((p) => p && p.id !== id));
 
-      if (activeUser && uid) {
+      if (uid) {
         try {
           await fsDeletePact(uid, id);
         } catch (err) {
@@ -153,13 +142,17 @@ export function PactsProvider({ children }: { children: React.ReactNode }) {
 
       if (wipeTransactions && targetPact) {
         const titleLower = (targetPact.pactTitle || "").trim().toLowerCase();
-        let wipedTxs: any[] = [];
-
-        // We need to import the deleteTransaction from TransactionContext
-        // This will be handled by the consumer component
+        const expectedNote = `recurring payment: ${titleLower}`;
+        const associatedTransactions = transactions.filter((transaction) => {
+          if (!transaction.isRecurring) return false;
+          const note = (transaction.note || "").trim().toLowerCase();
+          const merchant = (transaction.merchant || "").trim().toLowerCase();
+          return note === expectedNote || merchant === titleLower;
+        });
+        await Promise.all(associatedTransactions.map((transaction) => deleteTransaction(transaction.id)));
       }
     },
-    [pacts]
+    [pacts, uid, transactions, deleteTransaction]
   );
 
   const executePact = useCallback(

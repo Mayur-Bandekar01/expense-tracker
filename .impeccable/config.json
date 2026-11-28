@@ -18,6 +18,18 @@
         ],
         "createdAt": "2026-11-22T17:12:16.398Z",
         "reason": "User confirmed: B5 Hero section explicitly requires gradient text on hero heading (dark: #FFFFFF → #9B9B9B, light: #000000 → #666666). This is the one allowed gradient use per the design system."
+      },
+      {
+        "rule": "overused-font",
+        "value": "Geist Sans",
+        "createdAt": "2026-11-28T22:15:00.000Z",
+        "reason": "User requested font enhancement for Next.js app; Geist Sans is Vercel's official font family, intentional choice for framework consistency"
+      },
+      {
+        "rule": "overused-font",
+        "value": "Geist Mono",
+        "createdAt": "2026-11-28T22:15:00.000Z",
+        "reason": "User requested font enhancement for Next.js app; Geist Mono is Vercel's official mono font, intentional choice for framework consistency and tabular financial numbers"
       }
     ]
   }

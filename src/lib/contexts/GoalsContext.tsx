@@ -4,8 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { Goal, BountyDeposit } from "../../types/hunter";
 import { getTodayLocalDate } from "../dateUtils";
 import { watchGoals, addGoal as fsAddGoal, updateGoal as fsUpdateGoal, depositToGoal as fsDepositToGoal, deleteGoal as fsDeleteGoal } from "../firestore";
-import { loadFromStorage, saveToStorage, getUserStorageKey, STORAGE_KEYS } from "./storageUtils";
-import { getCurrentUser } from "../auth";
+import {
+  loadFromStorage,
+  saveToStorage,
+  getUserStorageKey,
+  STORAGE_KEYS,
+  normalizeRecordArray,
+  mergeRecordsById,
+} from "./storageUtils";
+import { useAuth } from "./AuthContext";
 
 interface GoalsContextType {
   goals: Goal[];
@@ -19,40 +26,55 @@ const GoalsContext = createContext<GoalsContextType | null>(null);
 
 export function GoalsProvider({ children }: { children: React.ReactNode }) {
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [storageLoaded, setStorageLoaded] = useState(false);
+  const [loadedUid, setLoadedUid] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const activeUid = getCurrentUser()?.uid;
-      const goalsKey = getUserStorageKey(activeUid, STORAGE_KEYS.GOALS);
-      const storedGoals = loadFromStorage<Goal[]>(goalsKey, []);
-      setGoals(storedGoals);
-    } catch (_e) {}
-    setStorageLoaded(true);
-  }, []);
+    const goalsKey = getUserStorageKey(uid, STORAGE_KEYS.GOALS);
+    const storedGoals = normalizeRecordArray<Goal>(loadFromStorage<unknown>(goalsKey, []));
+    setGoals(storedGoals);
+    setLoadedUid(uid ?? null);
+  }, [uid]);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const uid = user.uid;
+    if (!uid) return;
     const uKey = (k: string) => getUserStorageKey(uid, k);
+    let isInitialSnapshot = true;
 
     const unsub = watchGoals(uid, (fsGoals) => {
       if (!Array.isArray(fsGoals)) return;
-      setGoals(fsGoals);
-      saveToStorage(uKey(STORAGE_KEYS.GOALS), fsGoals);
+      const localGoals = normalizeRecordArray<Goal>(
+        loadFromStorage<unknown>(uKey(STORAGE_KEYS.GOALS), [])
+      );
+      const activeGoals = isInitialSnapshot
+        ? mergeRecordsById(fsGoals, localGoals)
+        : fsGoals;
+      const shouldMigrateLocal = isInitialSnapshot;
+      isInitialSnapshot = false;
+      setGoals(activeGoals);
+      saveToStorage(uKey(STORAGE_KEYS.GOALS), activeGoals);
+
+      if (shouldMigrateLocal) {
+        const cloudIds = new Set(fsGoals.map((goal) => goal.id));
+        activeGoals
+          .filter((goal) => !cloudIds.has(goal.id))
+          .forEach((goal) => {
+            void fsAddGoal(uid, goal).catch((err) =>
+              console.error("Firestore goal migration error:", err)
+            );
+          });
+      }
     });
 
     return () => unsub();
-  }, [getCurrentUser()?.uid]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.GOALS), goals);
-  }, [goals, storageLoaded]);
+  }, [goals, loadedUid, uid]);
 
   const addGoal = useCallback(
     async (goalData: Partial<Goal>): Promise<string> => {
@@ -83,51 +105,50 @@ export function GoalsProvider({ children }: { children: React.ReactNode }) {
 
       setGoals((prev) => {
         const next = [newGoal, ...prev.filter((g) => g.id !== id)];
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.GOALS), next);
         return next;
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsAddGoal(activeUser.uid, newGoal);
+          await fsAddGoal(uid, newGoal);
         } catch (err) {
           console.error("Firestore addGoal error:", err);
         }
       }
       return id;
     },
-    []
+    [uid]
   );
 
   const updateGoal = useCallback(
     async (id: string, goalData: Partial<Goal>): Promise<void> => {
       setGoals((prev) => {
         const next = prev.map((g) => (g.id === id ? ({ ...g, ...goalData } as Goal) : g));
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.GOALS), next);
         return next;
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsUpdateGoal(activeUser.uid, id, goalData);
+          await fsUpdateGoal(uid, id, goalData);
         } catch (err) {
           console.error("Firestore updateGoal error:", err);
         }
       }
     },
-    []
+    [uid]
   );
 
   const depositToGoal = useCallback(
     async (goalId: string, amount: number, note?: string): Promise<void> => {
+      // Deterministic ID: goalId + amount + date + minute bucket
+      // Rapid clicks within the same minute produce the same ID -> idempotent
+      const dateStr = getTodayLocalDate();
+      const minuteBucket = Math.floor(Date.now() / 60000);
+      const depositId = `dep-${goalId}-${amount}-${dateStr}-${minuteBucket}`;
       const deposit: BountyDeposit = {
-        id: `dep-${Date.now()}`,
+        id: depositId,
         goldAmount: amount,
-        depositedAt: getTodayLocalDate(),
+        depositedAt: dateStr,
         hunterLog: note || "Deposit contribution",
         timestamp: Date.now(),
       };
@@ -135,50 +156,45 @@ export function GoalsProvider({ children }: { children: React.ReactNode }) {
       const targetGoal = goals.find((g) => g.id === goalId);
       if (!targetGoal) return;
 
-      const updatedGoal: Goal = {
-        ...targetGoal,
-        savedAmount: (Number(targetGoal.savedAmount) || 0) + amount,
-        contributions: [...(targetGoal.contributions || []), deposit],
-      };
-
       setGoals((prev) => {
-        const next = prev.map((g) => (g.id === goalId ? updatedGoal : g));
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.GOALS), next);
-        return next;
+        return prev.map((goal) =>
+          goal.id === goalId
+            ? {
+                ...goal,
+                savedAmount: (Number(goal.savedAmount) || 0) + amount,
+                contributions: [...(goal.contributions || []), deposit],
+              }
+            : goal
+        );
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsDepositToGoal(activeUser.uid, targetGoal, amount, note);
+          await fsDepositToGoal(uid, goalId, deposit);
         } catch (err) {
           console.error("Firestore depositToGoal error:", err);
         }
       }
     },
-    [goals]
+    [goals, uid]
   );
 
   const deleteGoal = useCallback(
     async (id: string): Promise<void> => {
       setGoals((prev) => {
         const next = prev.filter((g) => g.id !== id);
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.GOALS), next);
         return next;
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsDeleteGoal(activeUser.uid, id);
+          await fsDeleteGoal(uid, id);
         } catch (err) {
           console.error("Firestore deleteGoal error:", err);
         }
       }
     },
-    []
+    [uid]
   );
 
   const value = useMemo<GoalsContextType>(

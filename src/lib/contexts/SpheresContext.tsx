@@ -4,8 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { CategorySphere } from "../../types/hunter";
 import { DEFAULT_CATEGORIES } from "../mockData";
 import { watchCategorySpheres, saveCategorySphere as fsSaveSphere, deleteCategorySphere as fsDeleteSphere } from "../firestore";
-import { loadFromStorage, saveToStorage, getUserStorageKey, STORAGE_KEYS, sanitizeCategorySpheres } from "./storageUtils";
-import { getCurrentUser } from "../auth";
+import {
+  loadFromStorage,
+  saveToStorage,
+  getUserStorageKey,
+  STORAGE_KEYS,
+  sanitizeCategorySpheres,
+  mergeRecordsById,
+} from "./storageUtils";
+import { useAuth } from "./AuthContext";
 
 interface SpheresContextType {
   spheres: CategorySphere[];
@@ -17,113 +24,112 @@ const SpheresContext = createContext<SpheresContextType | null>(null);
 
 export function SpheresProvider({ children }: { children: React.ReactNode }) {
   const [spheres, setSpheres] = useState<CategorySphere[]>(DEFAULT_CATEGORIES);
-  const [storageLoaded, setStorageLoaded] = useState(false);
+  const [loadedUid, setLoadedUid] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const activeUid = getCurrentUser()?.uid;
-      const spheresKey = getUserStorageKey(activeUid, STORAGE_KEYS.SPHERES);
-      const storedSpheres = loadFromStorage(spheresKey, DEFAULT_CATEGORIES);
-      setSpheres(sanitizeCategorySpheres(storedSpheres));
-    } catch (_e) {}
-    setStorageLoaded(true);
-  }, []);
+    const spheresKey = getUserStorageKey(uid, STORAGE_KEYS.SPHERES);
+    const storedSpheres = loadFromStorage<unknown>(spheresKey, DEFAULT_CATEGORIES);
+    setSpheres(sanitizeCategorySpheres(storedSpheres));
+    setLoadedUid(uid ?? null);
+  }, [uid]);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const uid = user.uid;
+    if (!uid) return;
     const uKey = (k: string) => getUserStorageKey(uid, k);
+    let isInitialSnapshot = true;
 
     const unsub = watchCategorySpheres(uid, (fsSpheres) => {
-      if (Array.isArray(fsSpheres) && fsSpheres.length > 0) {
-        const sanitized = sanitizeCategorySpheres(fsSpheres);
-        setSpheres(sanitized);
-        saveToStorage(uKey(STORAGE_KEYS.SPHERES), sanitized);
+      if (!Array.isArray(fsSpheres)) return;
+      const localSpheres = sanitizeCategorySpheres(
+        loadFromStorage<unknown>(uKey(STORAGE_KEYS.SPHERES), DEFAULT_CATEGORIES)
+      );
+      const activeSpheres = sanitizeCategorySpheres(
+        isInitialSnapshot ? mergeRecordsById(fsSpheres, localSpheres) : fsSpheres
+      );
+      const shouldMigrateLocal = isInitialSnapshot;
+      isInitialSnapshot = false;
+      setSpheres(activeSpheres);
+      saveToStorage(uKey(STORAGE_KEYS.SPHERES), activeSpheres);
+
+      if (shouldMigrateLocal) {
+        const cloudIds = new Set(fsSpheres.map((sphere) => sphere.id));
+        activeSpheres
+          .filter((sphere) => !cloudIds.has(sphere.id))
+          .forEach((sphere) => {
+            void fsSaveSphere(uid, sphere).catch((err) =>
+              console.error("Firestore category migration error:", err)
+            );
+          });
       }
     });
 
     return () => unsub();
-  }, [getCurrentUser()?.uid]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     if (spheres.length > 0) {
       saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.SPHERES), spheres);
     }
-  }, [spheres, storageLoaded]);
+  }, [spheres, loadedUid, uid]);
 
   const saveSphere = useCallback(
     async (catData: Partial<CategorySphere>): Promise<void> => {
-      let savedSphere: CategorySphere | undefined;
-      setSpheres((prev) => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        if (catData.id && safePrev.some((s) => s.id === catData.id)) {
-          const next = safePrev.map((s) => {
-            if (s.id === catData.id) {
-              savedSphere = {
-                ...s,
-                ...catData,
-                element: catData.element || s.element || "water",
-                auraColor: catData.auraColor || s.auraColor || "#00f2fe",
-              } as CategorySphere;
-              return savedSphere;
-            }
-            return s;
-          });
-          const uid = getCurrentUser()?.uid;
-          if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.SPHERES), next);
-          return next;
-        }
-        const newSphere: CategorySphere = {
-          id: catData.id || `cat-${Date.now()}`,
-          name: catData.name || "Custom Sphere",
-          emoji: catData.emoji || "✨",
-          element: catData.element || "water",
-          auraColor: catData.auraColor || "#00f2fe",
-          ...(catData.monthlyQuotaGold != null ? { monthlyQuotaGold: Number(catData.monthlyQuotaGold) } : {}),
-        };
-        savedSphere = newSphere;
-        const next = [...safePrev, newSphere];
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.SPHERES), next);
-        return next;
-      });
+      const safeSpheres = Array.isArray(spheres) ? spheres : [];
+      const existingSphere = catData.id
+        ? safeSpheres.find((sphere) => sphere.id === catData.id)
+        : undefined;
+      const savedSphere: CategorySphere = existingSphere
+        ? ({
+            ...existingSphere,
+            ...catData,
+            element: catData.element || existingSphere.element || "water",
+            auraColor: catData.auraColor || existingSphere.auraColor || "#00f2fe",
+          } as CategorySphere)
+        : {
+            id: catData.id || `cat-${Date.now()}`,
+            name: catData.name || "Custom Sphere",
+            emoji: catData.emoji || "✨",
+            element: catData.element || "water",
+            auraColor: catData.auraColor || "#00f2fe",
+            ...(catData.monthlyQuotaGold != null
+              ? { monthlyQuotaGold: Number(catData.monthlyQuotaGold) }
+              : {}),
+          };
+      const nextSpheres = existingSphere
+        ? safeSpheres.map((sphere) => (sphere.id === savedSphere.id ? savedSphere : sphere))
+        : [...safeSpheres, savedSphere];
+      setSpheres(nextSpheres);
 
-      const activeUser = getCurrentUser();
-      if (activeUser && savedSphere) {
+      if (uid) {
         try {
-          await fsSaveSphere(activeUser.uid, savedSphere);
+          await fsSaveSphere(uid, savedSphere);
         } catch (err) {
           console.error("Firestore saveSphere error:", err);
         }
       }
     },
-    []
+    [spheres, uid]
   );
 
   const deleteSphere = useCallback(
     async (id: string): Promise<void> => {
       setSpheres((prev) => {
-        const next = prev.filter((s) => s.id !== id);
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.SPHERES), next);
-        return next;
+        return prev.filter((s) => s.id !== id);
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsDeleteSphere(activeUser.uid, id);
+          await fsDeleteSphere(uid, id);
         } catch (err) {
           console.error("Firestore deleteSphere error:", err);
         }
       }
     },
-    []
+    [uid]
   );
 
   const value = useMemo<SpheresContextType>(

@@ -4,8 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { CategoryBudgetRune } from "../../types/hunter";
 import { getTodayLocalDate } from "../dateUtils";
 import { watchBudgetRunes, saveBudgetRune as fsSaveRune, deleteBudgetRune as fsDeleteRune, watchBudgetRune, setBudgetRune, deleteMonthlyBudget } from "../firestore";
-import { loadFromStorage, saveToStorage, getUserStorageKey, STORAGE_KEYS } from "./storageUtils";
-import { getCurrentUser } from "../auth";
+import {
+  loadFromStorage,
+  saveToStorage,
+  getUserStorageKey,
+  STORAGE_KEYS,
+  normalizeRecordArray,
+  mergeRecordsById,
+} from "./storageUtils";
+import { useAuth } from "./AuthContext";
 
 interface BudgetContextType {
   runes: CategoryBudgetRune[];
@@ -20,42 +27,63 @@ const BudgetContext = createContext<BudgetContextType | null>(null);
 export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const [runes, setRunes] = useState<CategoryBudgetRune[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number | null>(null);
-  const [storageLoaded, setStorageLoaded] = useState(false);
+  const [loadedUid, setLoadedUid] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const activeUid = getCurrentUser()?.uid;
-      const runesKey = getUserStorageKey(activeUid, STORAGE_KEYS.RUNES);
-      const budgetKey = getUserStorageKey(activeUid, STORAGE_KEYS.MONTHLY_BUDGET);
-      const storedRunes = loadFromStorage<CategoryBudgetRune[]>(runesKey, []);
-      const storedBudget = loadFromStorage<number | null>(budgetKey, null);
-      setRunes(storedRunes);
-      setMonthlyBudget(typeof storedBudget === "number" && storedBudget > 0 ? storedBudget : null);
-    } catch (_e) {}
-    setStorageLoaded(true);
-  }, []);
+    const runesKey = getUserStorageKey(uid, STORAGE_KEYS.RUNES);
+    const budgetKey = getUserStorageKey(uid, STORAGE_KEYS.MONTHLY_BUDGET);
+    const storedRunes = normalizeRecordArray<CategoryBudgetRune>(
+      loadFromStorage<unknown>(runesKey, [])
+    );
+    const storedBudget = loadFromStorage<number | null>(budgetKey, null);
+    setRunes(storedRunes);
+    setMonthlyBudget(typeof storedBudget === "number" && storedBudget > 0 ? storedBudget : null);
+    setLoadedUid(uid ?? null);
+  }, [uid]);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const uid = user.uid;
+    if (!uid) return;
     const uKey = (k: string) => getUserStorageKey(uid, k);
     const currentYM = getTodayLocalDate().slice(0, 7);
+    let isInitialRuneSnapshot = true;
+    let isInitialBudgetSnapshot = true;
 
     const unsubs: (() => void)[] = [];
 
     unsubs.push(
       watchBudgetRunes(uid, (fsRunes) => {
         if (!Array.isArray(fsRunes)) return;
-        setRunes(fsRunes);
-        saveToStorage(uKey(STORAGE_KEYS.RUNES), fsRunes);
+        const localRunes = normalizeRecordArray<CategoryBudgetRune>(
+          loadFromStorage<unknown>(uKey(STORAGE_KEYS.RUNES), [])
+        );
+        const activeRunes = isInitialRuneSnapshot
+          ? mergeRecordsById(fsRunes, localRunes)
+          : fsRunes;
+        const shouldMigrateLocal = isInitialRuneSnapshot;
+        isInitialRuneSnapshot = false;
+        setRunes(activeRunes);
+        saveToStorage(uKey(STORAGE_KEYS.RUNES), activeRunes);
+
+        if (shouldMigrateLocal) {
+          const cloudIds = new Set(fsRunes.map((rune) => rune.id));
+          activeRunes
+            .filter((rune) => !cloudIds.has(rune.id))
+            .forEach((rune) => {
+              void fsSaveRune(uid, rune).catch((err) =>
+                console.error("Firestore budget migration error:", err)
+              );
+            });
+        }
       })
     );
 
     unsubs.push(
       watchBudgetRune(uid, currentYM, (fsBudget) => {
+        const isInitialSnapshot = isInitialBudgetSnapshot;
+        isInitialBudgetSnapshot = false;
         if (fsBudget) {
           const rawAmt = (fsBudget as any).totalBudget ?? (fsBudget as any).allocatedManaGold;
           const parsed = Number(rawAmt);
@@ -65,105 +93,89 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         }
+
+        if (isInitialSnapshot) {
+          const localBudget = loadFromStorage<number | null>(uKey(STORAGE_KEYS.MONTHLY_BUDGET), null);
+          if (typeof localBudget === "number" && localBudget > 0) {
+            setMonthlyBudget(localBudget);
+            void setBudgetRune(uid, currentYM, {
+              totalBudget: localBudget,
+              allocatedManaGold: localBudget,
+              monthYear: currentYM,
+              currency: "INR",
+            }).catch((err) => console.error("Firestore monthly budget migration error:", err));
+            return;
+          }
+        }
         setMonthlyBudget(null);
         saveToStorage(uKey(STORAGE_KEYS.MONTHLY_BUDGET), null);
       })
     );
 
     return () => unsubs.forEach((u) => u());
-  }, [getCurrentUser()?.uid]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.RUNES), runes);
-  }, [runes, storageLoaded]);
+  }, [runes, loadedUid, uid]);
 
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.MONTHLY_BUDGET), monthlyBudget);
-  }, [monthlyBudget, storageLoaded]);
+  }, [monthlyBudget, loadedUid, uid]);
 
   const saveRune = useCallback(
     async (runeData: Partial<CategoryBudgetRune>): Promise<void> => {
-      let resolvedRune: CategoryBudgetRune | undefined;
-      setRunes((prev) => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        if (runeData.id && safePrev.some((r) => r.id === runeData.id)) {
-          const next = safePrev.map((r) => {
-            if (r.id === runeData.id) {
-              resolvedRune = { ...r, ...runeData } as CategoryBudgetRune;
-              return resolvedRune;
-            }
-            return r;
-          });
-          const uid = getCurrentUser()?.uid;
-          if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.RUNES), next);
-          return next;
-        }
-
-        const trimmedCat = (runeData.category || "").trim().toLowerCase();
-        const existingCatRune = safePrev.find(
+      const safeRunes = Array.isArray(runes) ? runes : [];
+      const trimmedCat = (runeData.category || "").trim().toLowerCase();
+      const existingRune = runeData.id
+        ? safeRunes.find((rune) => rune.id === runeData.id)
+        : undefined;
+      const existingCatRune = safeRunes.find(
           (r) => (r.category || "").trim().toLowerCase() === trimmedCat
         );
-        if (existingCatRune) {
-          const next = safePrev.map((r) => {
-            if (r.id === existingCatRune.id) {
-              resolvedRune = { ...r, ...runeData, id: existingCatRune.id } as CategoryBudgetRune;
-              return resolvedRune;
-            }
-            return r;
-          });
-          const uid = getCurrentUser()?.uid;
-          if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.RUNES), next);
-          return next;
-        }
-
-        resolvedRune = {
+      const previous = existingRune || existingCatRune;
+      const resolvedRune: CategoryBudgetRune = previous
+        ? ({ ...previous, ...runeData, id: previous.id } as CategoryBudgetRune)
+        : {
           id: runeData.id || `rune-${Date.now()}`,
           category: runeData.category || "Dining & Food",
           limit: Number(runeData.limit) || 10000,
           element: runeData.element || "sun",
           spent: Number(runeData.spent) || 0,
         };
-        const next = [...safePrev, resolvedRune];
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.RUNES), next);
-        return next;
-      });
+      const nextRunes = previous
+        ? safeRunes.map((rune) => (rune.id === previous.id ? resolvedRune : rune))
+        : [...safeRunes, resolvedRune];
+      setRunes(nextRunes);
 
-      const activeUser = getCurrentUser();
-      if (activeUser && resolvedRune) {
+      if (uid) {
         try {
-          await fsSaveRune(activeUser.uid, resolvedRune);
+          await fsSaveRune(uid, resolvedRune);
         } catch (err) {
           console.error("Firestore saveRune error:", err);
         }
       }
     },
-    []
+    [runes, uid]
   );
 
   const deleteRune = useCallback(
     async (id: string): Promise<void> => {
       setRunes((prev) => {
-        const next = prev.filter((r) => r.id !== id);
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.RUNES), next);
-        return next;
+        return prev.filter((r) => r.id !== id);
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsDeleteRune(activeUser.uid, id);
+          await fsDeleteRune(uid, id);
         } catch (err) {
           console.error("Firestore deleteRune error:", err);
         }
       }
     },
-    []
+    [uid]
   );
 
   const updateMonthlyBudget = useCallback(
@@ -176,16 +188,12 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
 
       setMonthlyBudget(validAmount);
 
-      const activeUser = getCurrentUser();
-      const uid = activeUser?.uid;
-      if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.MONTHLY_BUDGET), validAmount);
-
-      if (activeUser) {
+      if (uid) {
         try {
           if (validAmount === null) {
-            await deleteMonthlyBudget(activeUser.uid, currentYM);
+            await deleteMonthlyBudget(uid, currentYM);
           } else {
-            await setBudgetRune(activeUser.uid, currentYM, {
+            await setBudgetRune(uid, currentYM, {
               totalBudget: validAmount,
               allocatedManaGold: validAmount,
               monthYear: currentYM,
@@ -198,7 +206,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    []
+    [uid]
   );
 
   const value = useMemo<BudgetContextType>(

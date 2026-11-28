@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { HunterRootProvider } from "../components/layout/HunterRootProvider";
 import "./globals.css";
 
@@ -18,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} scroll-smooth`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -48,7 +49,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-surface-base text-text-primary min-h-screen font-[--font-geist-sans] selection:bg-brand-100 selection:text-brand-900 antialiased text-wrap-pretty">
+      <body className="bg-surface-base text-text-primary min-h-screen font-sans selection:bg-brand-100 selection:text-brand-900 antialiased text-wrap-pretty">
         <div className="relative flex min-h-screen flex-col">
           <HunterRootProvider>{children}</HunterRootProvider>
         </div>

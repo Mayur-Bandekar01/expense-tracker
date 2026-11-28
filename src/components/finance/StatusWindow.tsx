@@ -10,7 +10,12 @@ import { useBudgets } from "../../lib/contexts/BudgetContext";
 import { useGoals } from "../../lib/contexts/GoalsContext";
 import { useUI } from "../../lib/contexts/UIContext";
 import { useAuth } from "../../lib/contexts/AuthContext";
-import { evaluateHunterRank } from "../../lib/utils";
+import { computeVitals } from "../../lib/vitals";
+
+/** Normalize category key for consistent lookups (lowercase, trimmed) */
+function normCat(cat: string): string {
+  return (cat || "Miscellaneous").trim().toLowerCase();
+}
 import { Button } from "../ui/Button";
 import { Card, CardHeader, CardTitle } from "../ui/Card";
 import { Badge } from "../ui/Badge";
@@ -105,48 +110,8 @@ export function StatusWindow({
   const { animeAccents } = useUI();
   const { user } = useAuth();
 
-  // Compute vitals from transactions (previously from hunterContext)
-  const vitals = useMemo(() => {
-    const totalInflow = transactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    const totalOutflow = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    const netGold = totalInflow - totalOutflow;
-    const rankInfo = evaluateHunterRank(netGold);
-
-    const vitalityRatio =
-      totalInflow > 0
-        ? Math.max(0, Math.min(100, Math.round(((totalInflow - totalOutflow) / totalInflow) * 100)))
-        : 0;
-
-    const baseExp = transactions.length * 250 + Math.floor(Math.max(0, netGold) / 100);
-    const level = Math.max(1, Math.floor(baseExp / 2500) + 1);
-    const currentExp = baseExp % 2500;
-    const maxExp = 2500;
-
-    const hunterName = user?.displayName || (user?.email ? user.email.split("@")[0] : "User");
-    const avatarUrl = user?.photoURL || undefined;
-
-    return {
-      rank: rankInfo.rank,
-      title: rankInfo.title,
-      auraColor: rankInfo.auraColor,
-      level,
-      currentExp,
-      maxExp,
-      vitalityRatio,
-      dailyLoginStreak: Math.min(30, 7 + (transactions.length % 15)),
-      netGold,
-      totalInflow,
-      totalOutflow,
-      avatarUrl,
-      hunterName,
-    };
-  }, [transactions, user]);
+  // Compute vitals from transactions (single source: lib/vitals.ts)
+  const vitals = useMemo(() => computeVitals(transactions, user), [transactions, user]);
 
   const [period, setPeriod] = useState<"today" | "week" | "month">(initialPeriod);
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
@@ -212,7 +177,7 @@ export function StatusWindow({
     return (runes || []).map((rune) => {
       const runeCat = normalizeCat(rune?.category || "");
       // Use pre-computed categoryTotals from TransactionContext for O(1) lookup
-      const effectiveSpent = categoryTotals.get(rune.category) || 0;
+      const effectiveSpent = categoryTotals.get(normCat(rune.category)) || 0;
 
       const limit = Number(rune?.limit) || 1;
       const percent = Math.min(100, Math.round((effectiveSpent / limit) * 100));
@@ -246,13 +211,19 @@ export function StatusWindow({
     const now = new Date();
     const todayStr = getTodayLocalDate();
 
+    // Pre-group expenses by date for O(1) lookup
+    const expenseByDate = new Map<string, number>();
+    (transactions || []).forEach((t) => {
+      if (t.type === "expense" && t.date) {
+        expenseByDate.set(t.date, (expenseByDate.get(t.date) || 0) + (Number(t.amount) || 0));
+      }
+    });
+
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const dayAmount = (transactions || [])
-        .filter((t) => t.type === "expense" && t.date === ds)
-        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      const dayAmount = expenseByDate.get(ds) || 0;
 
       bars.push({
         label: `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`,

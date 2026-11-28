@@ -12,6 +12,11 @@ import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { EmptyState } from "../ui/EmptyState";
 
+/** Normalize category key for consistent lookups (lowercase, trimmed) */
+function normCat(cat: string): string {
+  return (cat || "Miscellaneous").trim().toLowerCase();
+}
+
 function getCategoryIcon(category: string, isIncome: boolean) {
   const cat = (category || "").toLowerCase();
   if (isIncome) {
@@ -107,15 +112,16 @@ export function VirtualizedQuestLog({
   const categories = useMemo(() => {
     const set = new Set<string>();
     transactions.forEach((t) => {
-      if (t.category) set.add(t.category);
+      if (t.category) set.add(normCat(t.category));
     });
     return Array.from(set).sort();
   }, [transactions]);
 
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
     transactions.forEach((t) => {
-      if (t.date && t.date.length >= 7) {
+      if (t.date && dateRe.test(t.date)) {
         set.add(t.date.slice(0, 7));
       }
     });

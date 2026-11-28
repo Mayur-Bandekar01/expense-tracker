@@ -85,9 +85,8 @@ export async function signOutUser(): Promise<void> {
   try {
     await signOut(auth);
   } finally {
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
+    // AuthGate's useEffect (line 26-28) handles redirect to "/" when authLoaded && !user
+    // No hard navigation needed here.
   }
 }
 

@@ -8,7 +8,10 @@ import {
   getDoc,
   getDocs,
   onSnapshot,
-  serverTimestamp,
+  runTransaction,
+  increment,
+  arrayUnion,
+  writeBatch,
 } from "firebase/firestore";
 import {
   Transaction,
@@ -94,13 +97,27 @@ export async function deleteTransaction(uid: string, id: string): Promise<void> 
 }
 
 export async function deleteAllTransactions(uid: string): Promise<void> {
-  // Note: Firestore doesn't have a native "delete all documents in collection" function
-  // We need to get all documents and delete them individually
-  // For a simpler approach with large collections, consider using a Cloud Function
   const coll = collection(db, "users", uid, "transactions");
   const snap = await getDocs(coll);
-  const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
-  await Promise.all(deletePromises);
+  if (snap.empty) return;
+
+  // Batched deletes: 500 ops per batch (Firestore limit)
+  const batches: ReturnType<typeof writeBatch>[] = [];
+  let currentBatch = writeBatch(db);
+  let opsInBatch = 0;
+
+  for (const docSnap of snap.docs) {
+    currentBatch.delete(docSnap.ref);
+    opsInBatch++;
+    if (opsInBatch === 500) {
+      batches.push(currentBatch);
+      currentBatch = writeBatch(db);
+      opsInBatch = 0;
+    }
+  }
+  if (opsInBatch > 0) batches.push(currentBatch);
+
+  await Promise.all(batches.map((b) => b.commit()));
 }
 
 export function watchTransactions(
@@ -163,31 +180,29 @@ export async function updateGoal(uid: string, id: string, data: Partial<Goal>): 
 
 export async function depositToGoal(
   uid: string,
-  goal: Goal,
-  amount: number,
-  note?: string
+  goalId: string,
+  deposit: BountyDeposit
 ): Promise<void> {
-  const deposit: BountyDeposit = {
-    id: `dep-${Date.now()}`,
-    goldAmount: amount,
-    depositedAt: getTodayLocalDate(),
-    hunterLog: note || "Deposit contribution",
-    timestamp: Date.now(),
-  };
+  if (!Number.isFinite(deposit.goldAmount) || deposit.goldAmount <= 0) {
+    throw new Error("Deposit amount must be a positive finite number.");
+  }
 
-  const newContributions = cleanFirestoreData([...(goal.contributions || []), deposit]);
-  const newSaved = (Number(goal.savedAmount) || 0) + amount;
-  const now = new Date().toISOString();
+  const goalRef = doc(db, "users", uid, "goals", goalId);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(goalRef);
+    if (!snapshot.exists()) throw new Error("Savings goal no longer exists.");
 
-  await setDoc(
-    doc(db, "users", uid, "goals", goal.id),
-    {
-      savedAmount: newSaved,
-      contributions: newContributions,
-      updatedAt: now,
-    },
-    { merge: true }
-  );
+    const contributions = snapshot.data().contributions;
+    if (Array.isArray(contributions) && contributions.some((entry: any) => entry?.id === deposit.id)) {
+      return;
+    }
+
+    transaction.update(goalRef, {
+      savedAmount: increment(deposit.goldAmount),
+      contributions: arrayUnion(cleanFirestoreData(deposit)),
+      updatedAt: new Date().toISOString(),
+    });
+  });
 }
 
 export async function deleteGoal(uid: string, id: string): Promise<void> {

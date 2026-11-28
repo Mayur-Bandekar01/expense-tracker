@@ -4,8 +4,20 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { Transaction } from "../../types/hunter";
 import { getTodayLocalDate } from "../dateUtils";
 import { watchTransactions, addTransaction as fsAddTransaction, updateTransaction as fsUpdateTransaction, deleteTransaction as fsDeleteTransaction, deleteAllTransactions } from "../firestore";
-import { loadFromStorage, saveToStorage, getUserStorageKey, STORAGE_KEYS } from "./storageUtils";
-import { getCurrentUser } from "../auth";
+import {
+  loadFromStorage,
+  saveToStorage,
+  getUserStorageKey,
+  STORAGE_KEYS,
+  normalizeRecordArray,
+  mergeRecordsById,
+} from "./storageUtils";
+import { useAuth } from "./AuthContext";
+
+/** Normalize category key for consistent lookups (lowercase, trimmed) */
+function normCat(cat: string): string {
+  return (cat || "Miscellaneous").trim().toLowerCase();
+}
 
 interface TransactionContextType {
   transactions: Transaction[];
@@ -22,44 +34,59 @@ const TransactionContext = createContext<TransactionContextType | null>(null);
 
 export function TransactionProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [storageLoaded, setStorageLoaded] = useState(false);
+  const [loadedUid, setLoadedUid] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
+  const uid = user?.uid;
 
-  // Load from localStorage on mount
+  // Reload user-scoped data whenever the authenticated account changes.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const activeUid = getCurrentUser()?.uid;
-      const txKey = getUserStorageKey(activeUid, STORAGE_KEYS.TRANSACTIONS);
-      const storedTx = loadFromStorage<Transaction[]>(txKey, []);
-      setTransactions(storedTx);
-    } catch (_e) {}
-    setStorageLoaded(true);
-  }, []);
+    const txKey = getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS);
+    const storedTx = normalizeRecordArray<Transaction>(loadFromStorage<unknown>(txKey, []));
+    setTransactions(storedTx);
+    setLoadedUid(uid ?? null);
+  }, [uid]);
 
-  // Firestore sync when user logs in
+  // Subscribe to Firestore on login. Merge local records into the initial snapshot
+  // so guest migration and offline records are not discarded.
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) return;
-
-    const uid = user.uid;
+    if (!uid) return;
     const uKey = (k: string) => getUserStorageKey(uid, k);
+    let isInitialSnapshot = true;
 
     const unsub = watchTransactions(uid, (fsTxs) => {
       if (!Array.isArray(fsTxs)) return;
-      const activeTxs = fsTxs.filter(Boolean);
+      const localTxs = normalizeRecordArray<Transaction>(
+        loadFromStorage<unknown>(uKey(STORAGE_KEYS.TRANSACTIONS), [])
+      );
+      const activeTxs = isInitialSnapshot
+        ? mergeRecordsById(fsTxs.filter(Boolean), localTxs)
+        : fsTxs.filter(Boolean);
+      const shouldMigrateLocal = isInitialSnapshot;
+      isInitialSnapshot = false;
       setTransactions(activeTxs);
       saveToStorage(uKey(STORAGE_KEYS.TRANSACTIONS), activeTxs);
+
+      if (shouldMigrateLocal) {
+        const cloudIds = new Set(fsTxs.map((tx) => tx.id));
+        activeTxs
+          .filter((tx) => !cloudIds.has(tx.id))
+          .forEach((tx) => {
+            void fsAddTransaction(uid, tx).catch((err) =>
+              console.error("Firestore transaction migration error:", err)
+            );
+          });
+      }
     });
 
     return () => unsub();
-  }, [getCurrentUser()?.uid]);
+  }, [uid]);
 
   // Persist to localStorage
   useEffect(() => {
-    if (!storageLoaded) return;
-    const uid = getCurrentUser()?.uid;
+    if (loadedUid !== (uid ?? null)) return;
     saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS), transactions);
-  }, [transactions, storageLoaded]);
+  }, [transactions, loadedUid, uid]);
 
   // Memoized derived computations
   const categoryTotals = useMemo(() => {
@@ -67,7 +94,7 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     transactions
       .filter((t) => t.type === "expense")
       .forEach((t) => {
-        const cat = t.category || "Miscellaneous";
+        const cat = normCat(t.category);
         map.set(cat, (map.get(cat) || 0) + (Number(t.amount) || 0));
       });
     return map;
@@ -75,8 +102,9 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
 
   const monthlyTotals = useMemo(() => {
     const map = new Map<string, { income: number; expense: number }>();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
     transactions.forEach((t) => {
-      if (!t.date || t.date.length < 7) return;
+      if (!t.date || !dateRe.test(t.date)) return;
       const ym = t.date.slice(0, 7);
       const curr = map.get(ym) || { income: 0, expense: 0 };
       if (t.type === "income") curr.income += Number(t.amount) || 0;
@@ -100,63 +128,50 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
         time: tx.time || new Date().toTimeString().slice(0, 5),
         method: tx.method || "UPI",
         isRecurring: Boolean(tx.isRecurring),
+        createdAt: Date.now(),
         ...(tx.difficulty ? { difficulty: tx.difficulty } : {}),
       };
 
       setTransactions((prev) => {
-        const next = [newTx, ...prev.filter((t) => t.id !== id)];
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS), next);
-        return next;
+        return [newTx, ...prev.filter((t) => t.id !== id)];
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsAddTransaction(activeUser.uid, newTx);
+          await fsAddTransaction(uid, newTx);
         } catch (err) {
           console.error("Firestore addTransaction error:", err);
         }
       }
       return id;
     },
-    []
+    [uid]
   );
 
   const updateTransaction = useCallback(
     async (id: string, tx: Partial<Transaction>): Promise<void> => {
       setTransactions((prev) => {
-        const next = prev.map((t) => (t.id === id ? ({ ...t, ...tx } as Transaction) : t));
-        const uid = getCurrentUser()?.uid;
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS), next);
-        return next;
+        return prev.map((t) => (t.id === id ? ({ ...t, ...tx } as Transaction) : t));
       });
 
-      const activeUser = getCurrentUser();
-      if (activeUser) {
+      if (uid) {
         try {
-          await fsUpdateTransaction(activeUser.uid, id, tx);
+          await fsUpdateTransaction(uid, id, tx);
         } catch (err) {
           console.error("Firestore updateTransaction error:", err);
         }
       }
     },
-    []
+    [uid]
   );
 
   const deleteTransaction = useCallback(
     async (id: string): Promise<void> => {
-      const activeUser = getCurrentUser();
-      const uid = activeUser?.uid;
-
       setTransactions((prev) => {
-        const next = (prev || []).filter((t) => t && t.id !== id);
-        if (uid) saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS), next);
-        saveToStorage(STORAGE_KEYS.TRANSACTIONS, next);
-        return next;
+        return (prev || []).filter((t) => t && t.id !== id);
       });
 
-      if (activeUser && uid) {
+      if (uid) {
         try {
           await fsDeleteTransaction(uid, id);
         } catch (err) {
@@ -164,35 +179,27 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
         }
       }
     },
-    []
+    [uid]
   );
 
   /**
    * Resets all transaction data. Useful for demo mode or clearing local account.
    */
   const resetToDemoData = useCallback(async () => {
-    const uid = getCurrentUser()?.uid;
     const demoData: Transaction[] = [];
 
     // Clear all transactions locally
     setTransactions(demoData);
 
-    // Clear localStorage
-    if (uid) {
-      saveToStorage(getUserStorageKey(uid, STORAGE_KEYS.TRANSACTIONS), demoData);
-    }
-    saveToStorage(STORAGE_KEYS.TRANSACTIONS, demoData);
-
     // Clear Firestore if authenticated user
-    const activeUser = getCurrentUser();
-    if (activeUser) {
+    if (uid) {
       try {
-        await deleteAllTransactions(activeUser.uid);
+        await deleteAllTransactions(uid);
       } catch (err) {
         console.error("Firestore resetToDemoData error:", err);
       }
     }
-  }, []);
+  }, [uid]);
 
   const value = useMemo<TransactionContextType>(
     () => ({

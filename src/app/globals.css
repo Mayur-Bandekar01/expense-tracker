@@ -47,6 +47,31 @@ body {
   color: var(--text-main);
 }
 
+/* ── Financial Numbers: Tabular, No Ligatures ─────────── */
+/* Geist Mono tabular-nums + disable ligatures so ₹1,234.56 doesn't ligate */
+.font-mono-tabular,
+.font-numbers {
+  font-variant-numeric: tabular-nums;
+  font-variant-ligatures: none;
+  font-feature-settings: "tnum" 1, "liga" 0, "calt" 0;
+}
+
+/* Ensure Geist Sans loads with proper fallbacks for Windows/macOS/Linux rendering */
+@font-face {
+  font-family: 'Geist Sans Fallback';
+  src: local('system-ui'), local('-apple-system'), local('BlinkMacSystemFont'), local('Segoe UI'), local('Roboto');
+  ascent-override: 90%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Geist Mono Fallback';
+  src: local('ui-monospace'), local('SF Mono'), local('Monaco'), local('Consolas');
+  ascent-override: 85%;
+  descent-override: 20%;
+  line-gap-override: 0%;
+}
+
 /* ── 3D Tactile Surface Cards (Zero-JS Specular Bevel) ────────── */
 .card-3d,
 .surface-card,

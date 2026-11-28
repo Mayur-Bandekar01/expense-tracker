@@ -46,9 +46,13 @@ export function AuthGate({ children }: AuthGateProps) {
   // 1. Loading State
   if (!authLoaded) {
     return (
-      <div className="min-h-[100dvh] bg-[#F4F6FB] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 flex flex-col items-center justify-center p-4 transition-colors duration-200">
-        <div className="flex flex-col items-center gap-4 animate-pulse select-none">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-700 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_4px_0_#312e81,0_10px_20px_rgba(79,70,229,0.3)]">
+      <div className="min-h-[100dvh] bg-[#02060E] dark:bg-[#02060E] text-slate-800 dark:text-slate-100 flex flex-col items-center justify-center p-4 transition-colors duration-200">
+        {/* Ambient glow behind loading icon */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-1/2 -left-1/2 w-[600px] h-[600px] rounded-full bg-[#C50337]/15 blur-3xl" />
+        </div>
+        <div className="flex flex-col items-center gap-4 animate-pulse select-none relative z-10">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-[#C50337] to-[#8A0226] flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_4px_0_#312e81,0_10px_20px_rgba(79,70,229,0.3)]">
             <svg
               className="w-7 h-7 text-white"
               viewBox="0 0 24 24"
@@ -60,11 +64,11 @@ export function AuthGate({ children }: AuthGateProps) {
             </svg>
           </div>
           <div className="text-center">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-lg font-bold tracking-tight text-white dark:text-white">
               Paisa Pulse
             </h1>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+            <p className="text-xs font-medium text-[#A1A1AA] dark:text-[#A1A1AA] mt-1 flex items-center justify-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#C50337] animate-ping" />
               Securing session & cloud sync...
             </p>
           </div>
@@ -76,11 +80,14 @@ export function AuthGate({ children }: AuthGateProps) {
   // 2. Signed-Out State: 3D Tactile Responsive Portal (Mobile + Desktop)
   if (!user) {
     return (
-      <div className="min-h-[100dvh] w-full bg-[#F4F6FB] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 flex flex-col justify-between overflow-x-hidden transition-colors duration-200 select-none">
+      <div className="min-h-[100dvh] w-full bg-[#02060E] dark:bg-[#02060E] text-[#F5F5F5] dark:text-[#F5F5F5] flex flex-col justify-between overflow-x-hidden transition-colors duration-200 select-none relative">
+        {/* Subtle radial ambient glows behind main split card */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-[#C50337]/10 blur-[120px] pointer-events-none" />
+
         {/* Top Header Navigation Bar */}
-        <header className="w-full max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-8 py-3.5 shrink-0 animate-in slide-in-from-top-4 duration-500 ease-out">
+        <header className="w-full max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-8 py-3.5 shrink-0 animate-in slide-in-from-top-4 duration-500 ease-out relative z-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-indigo-500 to-indigo-700 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_0_#312e81,0_4px_10px_rgba(79,70,229,0.25)] shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#C50337] to-[#6E011E] flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_0_#4c0114,0_4px_10px_rgba(197,3,55,0.3)] shrink-0">
               <svg
                 className="w-4 h-4 text-white"
                 viewBox="0 0 24 24"
@@ -92,10 +99,10 @@ export function AuthGate({ children }: AuthGateProps) {
               </svg>
             </div>
             <div>
-              <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white block leading-tight">
+              <span className="font-bold text-sm tracking-tight text-white dark:text-white block leading-tight">
                 Paisa Pulse
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
+              <span className="text-[11px] text-[#A1A1AA] dark:text-[#A1A1AA] block leading-tight">
                 Your money, clearly in view
               </span>
             </div>
@@ -103,7 +110,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
           {/* Theme Switcher Pill */}
           <div
-            className="inline-flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-full shadow-[inset_0_1px_0_#fff,0_2px_5px_rgba(15,23,42,0.05)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            className="inline-flex items-center p-1 bg-[#090B12] dark:bg-[#090B12] border border-[rgba(197,3,55,0.25)] rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_5px_rgba(0,0,0,0.5)]"
             role="radiogroup"
             aria-label="Theme selection"
           >
@@ -115,8 +122,8 @@ export function AuthGate({ children }: AuthGateProps) {
               onClick={() => setTheme("light")}
               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 theme === "light"
-                  ? "bg-amber-50 dark:bg-slate-800 text-amber-500 shadow-xs"
-                  : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  ? "bg-[#C50337] text-white shadow-xs"
+                  : "text-[#A1A1AA] hover:text-white dark:hover:text-white"
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,8 +144,8 @@ export function AuthGate({ children }: AuthGateProps) {
               onClick={() => setTheme("dark")}
               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 theme === "dark"
-                  ? "bg-indigo-950/80 text-indigo-400 shadow-xs"
-                  : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  ? "bg-[#C50337] text-white shadow-xs"
+                  : "text-[#A1A1AA] hover:text-white dark:hover:text-white"
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,8 +166,8 @@ export function AuthGate({ children }: AuthGateProps) {
               onClick={() => setTheme("system")}
               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 theme === "system"
-                  ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-xs"
-                  : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  ? "bg-[#0D0E16] text-[#FF4D79] shadow-xs"
+                  : "text-[#A1A1AA] hover:text-white dark:hover:text-white"
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -176,14 +183,14 @@ export function AuthGate({ children }: AuthGateProps) {
         </header>
 
         {/* Main 3D Split Card Container */}
-        <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-auto py-3">
-          <div className="card-3d overflow-hidden grid grid-cols-1 lg:grid-cols-12 rounded-3xl animate-in fade-in duration-700 ease-out">
+        <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-auto py-3 relative z-10">
+          <div className="card-3d overflow-hidden grid grid-cols-1 lg:grid-cols-12 rounded-3xl animate-in fade-in duration-700 ease-out border border-[rgba(197,3,55,0.25)] bg-[#090B12]">
             {/* RIGHT COLUMN ON DESKTOP / TOP ON MOBILE: Sign-in Action Portal */}
-            <div className="order-1 lg:order-2 lg:col-span-7 bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 flex flex-col justify-between animate-in slide-in-from-right-4 duration-600 ease-out delay-100">
+            <div className="order-1 lg:order-2 lg:col-span-7 bg-[#090B12] dark:bg-[#090B12] p-6 sm:p-8 md:p-10 flex flex-col justify-between animate-in slide-in-from-right-4 duration-600 ease-out delay-100">
               <div>
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200/70 dark:border-indigo-800/50 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] animate-in fade-in duration-400 ease-out delay-200">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#02060E] border border-[rgba(197,3,55,0.3)] text-[11px] font-semibold text-[#FF4D79] shadow-[inset_0_1px_0_rgba(197,3,55,0.2)] animate-in fade-in duration-400 ease-out delay-200">
+                    <svg className="w-3.5 h-3.5 text-[#C50337]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -194,17 +201,17 @@ export function AuthGate({ children }: AuthGateProps) {
                     <span>256-Bit Cloud Sync</span>
                   </div>
 
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in duration-400 ease-out delay-250">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1 animate-in fade-in duration-400 ease-out delay-250">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Mobile & Desktop Ready
                   </span>
                 </div>
 
                 <div className="mb-6 animate-in slide-in-from-bottom-4 duration-500 ease-out delay-300">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                     Welcome to Paisa Pulse
                   </h1>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed max-w-md">
+                  <p className="text-xs sm:text-sm text-[#A1A1AA] mt-2 leading-relaxed max-w-md">
                     Sign in with Google to track expenses, decode bank SMS alerts, and sync your
                     monthly budgets across your phone and laptop.
                   </p>
@@ -214,11 +221,11 @@ export function AuthGate({ children }: AuthGateProps) {
                 {authError && (
                   <div
                     role="alert"
-                    className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-300 ease-out"
+                    className="mb-5 p-3.5 rounded-2xl bg-rose-950/50 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-300 ease-out"
                   >
                     <span className="text-sm shrink-0">⚠️</span>
                     <div className="flex-1 leading-relaxed">
-                      <p className="font-bold text-rose-700 dark:text-rose-300">
+                      <p className="font-bold text-rose-300">
                         Authentication Notice
                       </p>
                       <p className="mt-0.5">{authError}</p>
@@ -226,7 +233,7 @@ export function AuthGate({ children }: AuthGateProps) {
                     <button
                       type="button"
                       onClick={() => setAuthError(null)}
-                      className="text-rose-400 hover:text-rose-600 p-0.5"
+                      className="text-rose-400 hover:text-rose-200 p-0.5"
                       aria-label="Dismiss error"
                     >
                       ✕
@@ -240,7 +247,7 @@ export function AuthGate({ children }: AuthGateProps) {
                     type="button"
                     onClick={() => handleSignIn(false)}
                     disabled={signingIn}
-                    className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold text-sm border border-indigo-700/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_3px_0_#312e81,0_8px_20px_-4px_rgba(79,70,229,0.45)] active:translate-y-[2px] active:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_0_#312e81] transition-all duration-150 disabled:opacity-70 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl bg-gradient-to-br from-[#C50337] to-[#8A0226] hover:from-[#D1043B] hover:to-[#7A0222] text-white font-semibold text-sm border border-[rgba(197,3,55,0.4)] shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_16px_rgba(197,3,55,0.4)] active:translate-y-[2px] transition-all duration-150 disabled:opacity-70 cursor-pointer"
                   >
                     {signingIn ? (
                       <>
@@ -294,13 +301,13 @@ export function AuthGate({ children }: AuthGateProps) {
                   </button>
 
                   {/* Mobile In-App Browser Redirect Fallback Button */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 text-[11px] text-[#A1A1AA]">
                     <span>Private, self-directed ledger</span>
                     <button
                       type="button"
                       onClick={() => handleSignIn(true)}
                       disabled={signingIn}
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+                      className="text-[#FF4D79] hover:text-white transition-colors font-semibold"
                     >
                       Popup blocked on mobile? Use Redirect Sign-In →
                     </button>
@@ -309,22 +316,22 @@ export function AuthGate({ children }: AuthGateProps) {
               </div>
 
               {/* Quick 3D Feature Mini-Pills */}
-              <div className="grid grid-cols-3 gap-2 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 text-center animate-in fade-in duration-500 ease-out delay-500">
-                <div className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+              <div className="grid grid-cols-3 gap-2 pt-6 mt-6 border-t border-[rgba(197,3,55,0.15)] text-center animate-in fade-in duration-500 ease-out delay-500">
+                <div className="p-2.5 rounded-xl bg-[#0D0E16] border border-[rgba(197,3,55,0.2)] hover:border-[#C50337] transition-colors">
                   <span className="text-sm block">💬</span>
-                  <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">
+                  <span className="text-[10px] font-semibold text-[#F5F5F5] mt-0.5 block">
                     SMS Parser
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="p-2.5 rounded-xl bg-[#0D0E16] border border-[rgba(197,3,55,0.2)] hover:border-[#C50337] transition-colors">
                   <span className="text-sm block">📊</span>
-                  <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">
+                  <span className="text-[10px] font-semibold text-[#F5F5F5] mt-0.5 block">
                     Smart Budgets
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="p-2.5 rounded-xl bg-[#0D0E16] border border-[rgba(197,3,55,0.2)] hover:border-[#C50337] transition-colors">
                   <span className="text-sm block">☁️</span>
-                  <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">
+                  <span className="text-[10px] font-semibold text-[#F5F5F5] mt-0.5 block">
                     Instant Sync
                   </span>
                 </div>
@@ -332,11 +339,11 @@ export function AuthGate({ children }: AuthGateProps) {
             </div>
 
             {/* LEFT COLUMN ON DESKTOP / BOTTOM ON MOBILE: 3D Vault Card Showcase */}
-            <div className="order-2 lg:order-1 lg:col-span-5 bg-gradient-to-b from-[#EEF2FC] via-[#E8EEFB] to-[#DCE5F9] dark:from-slate-900 dark:via-indigo-950/35 dark:to-slate-900 border-t lg:border-t-0 lg:border-r border-slate-200/80 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between animate-in slide-in-from-left-4 duration-600 ease-out delay-100">
+            <div className="order-2 lg:order-1 lg:col-span-5 bg-gradient-to-b from-[#0D0E16] via-[#090B12] to-[#02060E] border-t lg:border-t-0 lg:border-r border-[rgba(197,3,55,0.2)] p-6 sm:p-7 flex flex-col justify-between animate-in slide-in-from-left-4 duration-600 ease-out delay-100">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/50 shadow-xs mb-2 animate-in fade-in duration-400 ease-out delay-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
-                  <span className="text-[11px] font-semibold text-indigo-950 dark:text-indigo-200">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#02060E] border border-[rgba(197,3,55,0.3)] shadow-xs mb-2 animate-in fade-in duration-400 ease-out delay-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C50337]" />
+                  <span className="text-[11px] font-semibold text-[#FF4D79]">
                     Interactive 3D Telemetry
                   </span>
                 </div>
@@ -347,20 +354,20 @@ export function AuthGate({ children }: AuthGateProps) {
                 </div>
 
                 <div className="mt-2 text-center lg:text-left animate-in slide-in-from-bottom-4 duration-500 ease-out delay-400">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
+                  <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
                     A clearer view of your money starts here.
                   </h2>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
                     Effortless tracking, thoughtful budgeting, and zero mental friction across all
                     your devices.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-4 mt-4 border-t border-indigo-200/60 dark:border-slate-800 font-medium animate-in fade-in duration-400 ease-out delay-500">
+              <div className="flex items-center justify-between text-[11px] text-[#A1A1AA] pt-4 mt-4 border-t border-[rgba(197,3,55,0.15)] font-medium animate-in fade-in duration-400 ease-out delay-500">
                 <span>Self-directed privacy</span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   OAuth 2.0 Verified
                 </span>
               </div>
@@ -369,8 +376,8 @@ export function AuthGate({ children }: AuthGateProps) {
         </main>
 
         {/* Footer */}
-        <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-3 px-4 sm:px-8 shrink-0 animate-in slide-in-from-bottom-4 duration-500 ease-out delay-600">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <footer className="w-full border-t border-[rgba(197,3,55,0.15)] py-3 px-4 sm:px-8 shrink-0 animate-in slide-in-from-bottom-4 duration-500 ease-out delay-600 relative z-10">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#A1A1AA]">
             <div className="flex items-center gap-1.5">
               <span>🛡️ Bank-grade 256-bit user isolation</span>
             </div>
@@ -379,21 +386,21 @@ export function AuthGate({ children }: AuthGateProps) {
               <button
                 type="button"
                 onClick={() => setActiveModal("privacy")}
-                className="hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Privacy Policy
               </button>
               <button
                 type="button"
                 onClick={() => setActiveModal("terms")}
-                className="hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Terms of Service
               </button>
               <button
                 type="button"
                 onClick={() => setActiveModal("security")}
-                className="hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Security
               </button>

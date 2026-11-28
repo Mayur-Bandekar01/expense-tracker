@@ -125,29 +125,29 @@ export function LoginIllustration({ className = "w-full max-w-[350px]" }: { clas
         }
       `}</style>
 
-      {/* Ambient Backlight Aura */}
-      <div className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-indigo-500/20 dark:bg-indigo-500/30 blur-2xl pointer-events-none" />
+      {/* Ambient Backlight Aura - Crimson glow */}
+      <div className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-[#C50337]/15 dark:bg-[#C50337]/15 blur-2xl pointer-events-none" />
 
       {/* 3D Animated Scene Container */}
       <div className="pp-scene-3d relative w-full max-w-[285px] sm:max-w-[305px] h-[205px] sm:h-[225px]">
-        {/* 0. 3D Orbiting Gyro Ring Behind Card */}
-        <div className="pp-orbit-ring absolute -inset-6 rounded-full border border-dashed border-indigo-400/40 dark:border-indigo-400/30 pointer-events-none" />
+        {/* 0. 3D Orbiting Gyro Ring Behind Card - Crimson tinted */}
+        <div className="pp-orbit-ring absolute -inset-6 rounded-full border border-dashed border-[#C50337]/40 pointer-events-none" />
 
-        {/* 1. Dynamic Breathing 3D Shadow Plate */}
-        <div className="pp-shadow-plate absolute inset-3 rounded-3xl bg-indigo-950/40 dark:bg-black/80 blur-md pointer-events-none" />
+        {/* 1. Dynamic Breathing 3D Shadow Plate - Deep crimson glow */}
+        <div className="pp-shadow-plate absolute inset-3 rounded-3xl bg-[#C50337]/20 dark:bg-[#C50337]/20 blur-md pointer-events-none" />
 
-        {/* 2. Main 3D Metallic Paisa Pulse Vault Card */}
+        {/* 2. Main 3D Metallic Paisa Pulse Vault Card - Obsidian & Crimson */}
         <div
-          className="absolute inset-0 rounded-3xl p-5 flex flex-col justify-between text-white overflow-hidden border border-white/30 dark:border-indigo-400/35"
+          className="absolute inset-0 rounded-3xl p-5 flex flex-col justify-between text-white overflow-hidden border border-white/15 dark:border-[#C50337]/35"
           style={{
-            background: "linear-gradient(135deg, #2e1065 0%, #4338ca 48%, #6366f1 100%)",
+            background: "linear-gradient(135deg, #02060E 0%, #0D0E16 48%, #1A080C 100%)",
             boxShadow:
-              "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 -2px 6px rgba(15,23,42,0.55), 0 18px 32px -8px rgba(49,46,129,0.55), -5px 6px 0 rgba(30,27,75,0.95)",
+              "inset 0 1px 1px rgba(255,255,255,0.08), inset 0 -2px 6px rgba(0,0,0,0.6), 0 18px 32px -8px rgba(197,3,55,0.35), -5px 6px 0 rgba(100,1,10,0.9)",
             transform: "translateZ(0px)",
           }}
         >
-          {/* Animated Holographic Foil Light Sweep */}
-          <div className="pp-holo-beam absolute inset-y-0 -left-10 w-20 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+          {/* Animated Holographic Foil Light Sweep - Crimson tinted */}
+          <div className="pp-holo-beam absolute inset-y-0 -left-10 w-20 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
           {/* Top Row: 3D Gold EMV Chip + Brand Title */}
           <div className="relative z-10 flex items-center justify-between">
@@ -156,14 +156,14 @@ export function LoginIllustration({ className = "w-full max-w-[350px]" }: { clas
                 <div className="w-full h-[1px] bg-amber-900/40" />
                 <div className="w-full h-[1px] bg-amber-900/40" />
               </div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-indigo-100/90 font-semibold">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#FFD1D9] font-semibold">
                 Paisa Pulse · 3D
               </span>
             </div>
 
-            {/* Contactless / Live Signal Waves */}
+            {/* Contactless / Live Signal Waves - Crimson tinted */}
             <svg
-              className="w-4 h-4 text-indigo-200/80"
+              className="w-4 h-4 text-[#FFD1D9]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -180,19 +180,19 @@ export function LoginIllustration({ className = "w-full max-w-[350px]" }: { clas
           {/* Center Row: Net Balance + Animated Live ECG Pulse Line */}
           <div className="relative z-10 flex items-end justify-between gap-2 my-1">
             <div>
-              <span className="text-[10px] uppercase tracking-wider text-indigo-200/90 block font-medium">
+              <span className="text-[10px] uppercase tracking-wider text-[#FFD1D9] block font-medium">
                 Net Available Balance
               </span>
               <div className="text-2xl sm:text-[26px] font-extrabold tracking-tight font-mono mt-0.5 drop-shadow-sm">
-                ₹1,42,850<span className="text-xs text-indigo-200">.00</span>
+                ₹1,42,850<span className="text-xs text-[#FFD1D9]">.00</span>
               </div>
             </div>
 
-            {/* Animated Live Pulse Waveform SVG */}
+            {/* Animated Live Pulse Waveform SVG - Crimson */}
             <svg className="w-20 h-9 overflow-visible shrink-0" viewBox="0 0 100 36" fill="none">
               <path
                 d="M2 24 L22 24 L32 10 L44 30 L56 6 L68 24 L98 24"
-                stroke="rgba(255,255,255,0.18)"
+                stroke="rgba(255,255,255,0.12)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -200,7 +200,7 @@ export function LoginIllustration({ className = "w-full max-w-[350px]" }: { clas
               <path
                 className="pp-wave-line"
                 d="M2 24 L22 24 L32 10 L44 30 L56 6 L68 24 L98 24"
-                stroke="#34d399"
+                stroke="#C50337"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -209,45 +209,45 @@ export function LoginIllustration({ className = "w-full max-w-[350px]" }: { clas
           </div>
 
           {/* Bottom Row: Card Footer & Live Sync Status */}
-          <div className="relative z-10 flex items-center justify-between text-[10px] text-indigo-100/90 pt-2 border-t border-white/15">
+          <div className="relative z-10 flex items-center justify-between text-[10px] text-[#FFD1D9] pt-2 border-t border-white/10">
             <span className="font-mono tracking-wider">•••• 2026</span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/40 text-emerald-200 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#C50337]/20 border border-[#C50337]/40 text-[#FF4D79] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C50337] animate-ping" />
               Live Sync
             </span>
           </div>
         </div>
 
-        {/* 3. Floating Top-Left 3D Gold Rupee Orb (Z: +58px) */}
+        {/* 3. Floating Top-Left 3D Gold Rupee Orb (Z: +58px) - Keep gold, it's iconic */}
         <div className="pp-coin-tl absolute -top-4 -left-3 w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border border-white/70 shadow-[inset_0_1px_1px_#fff,0_10px_20px_-3px_rgba(245,158,11,0.5),0_2px_0_#b45309] flex items-center justify-center text-amber-950 font-extrabold text-lg">
           ₹
         </div>
 
-        {/* 4. Floating Top-Right 3D Pill: UPI Inflow Alert (Z: +46px) */}
-        <div className="pp-badge-tr absolute -top-3 -right-3 sm:-right-5 px-3 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700 shadow-[inset_0_1px_0_#fff,0_14px_26px_-4px_rgba(15,23,42,0.22),0_2px_0_rgba(15,23,42,0.08)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_14px_26px_-4px_rgba(0,0,0,0.75)] flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+        {/* 4. Floating Top-Right 3D Pill: UPI Inflow Alert (Z: +46px) - Glassmorphic with crimson accent */}
+        <div className="pp-badge-tr absolute -top-3 -right-3 sm:-right-5 px-3 py-2 rounded-2xl bg-[#02060E]/75 dark:bg-[#02060E]/75 backdrop-blur-md border border-[#C50337]/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_26px_-4px_rgba(197,3,55,0.15),0_2px_0_rgba(197,3,55,0.06)] flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-[#C50337]/20 border border-[#C50337]/50 flex items-center justify-center text-[#FF4D79] text-xs font-bold">
             ↓
           </div>
           <div className="leading-tight">
-            <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 block font-mono">
+            <span className="text-[11px] font-extrabold text-[#FF4D79] block font-mono">
               +₹24,500
             </span>
-            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium block">
+            <span className="text-[9px] text-[#A1A1AA] font-medium block">
               UPI Auto-Parsed
             </span>
           </div>
         </div>
 
-        {/* 5. Floating Bottom-Left 3D Pill: Mochi Budget Shield (Z: +38px) */}
-        <div className="pp-badge-bl absolute -bottom-4 -left-2 sm:-left-4 px-3 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700 shadow-[inset_0_1px_0_#fff,0_14px_26px_-4px_rgba(15,23,42,0.22),0_2px_0_rgba(15,23,42,0.08)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_14px_26px_-4px_rgba(0,0,0,0.75)] w-44">
+        {/* 5. Floating Bottom-Left 3D Pill: Mochi Budget Shield (Z: +38px) - Glassmorphic with crimson progress */}
+        <div className="pp-badge-bl absolute -bottom-4 -left-2 sm:-left-4 px-3 py-2 rounded-2xl bg-[#02060E]/75 dark:bg-[#02060E]/75 backdrop-blur-md border border-[#C50337]/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_26px_-4px_rgba(197,3,55,0.15),0_2px_0_rgba(197,3,55,0.06)] w-44">
           <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
-            <span className="text-slate-700 dark:text-slate-200 flex items-center gap-1">
+            <span className="text-[#F5F5F5] flex items-center gap-1">
               <span>🍡</span> Budget Shield
             </span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-mono">64%</span>
+            <span className="text-[#FF4D79] font-mono">64%</span>
           </div>
-          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-[1px] shadow-inner">
-            <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500" />
+          <div className="w-full h-1.5 bg-[#0D0E16] rounded-full overflow-hidden p-[1px] shadow-inner">
+            <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-[#C50337] to-[#FF4D79]" />
           </div>
         </div>
       </div>

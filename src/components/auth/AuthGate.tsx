@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../lib/contexts/AuthContext";
 import { useUI } from "../../lib/contexts/UIContext";
@@ -21,8 +21,10 @@ export function AuthGate({ children }: AuthGateProps) {
   const [activeModal, setActiveModal] = useState<"privacy" | "terms" | "security" | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (authLoaded && !user && pathname && pathname !== "/") {
       router.replace("/");
     }
@@ -76,7 +78,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <div className="min-h-[100dvh] w-full bg-[#F4F6FB] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 flex flex-col justify-between overflow-x-hidden transition-colors duration-200 select-none">
         {/* Top Header Navigation Bar */}
-        <header className="w-full max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-8 py-3.5 shrink-0">
+        <header className="w-full max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-8 py-3.5 shrink-0 animate-in slide-in-from-top-4 duration-500 ease-out">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-indigo-500 to-indigo-700 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_0_#312e81,0_4px_10px_rgba(79,70,229,0.25)] shrink-0">
               <svg
@@ -175,12 +177,12 @@ export function AuthGate({ children }: AuthGateProps) {
 
         {/* Main 3D Split Card Container */}
         <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-auto py-3">
-          <div className="card-3d overflow-hidden grid grid-cols-1 lg:grid-cols-12 rounded-3xl">
+          <div className="card-3d overflow-hidden grid grid-cols-1 lg:grid-cols-12 rounded-3xl animate-in fade-in duration-700 ease-out">
             {/* RIGHT COLUMN ON DESKTOP / TOP ON MOBILE: Sign-in Action Portal */}
-            <div className="order-1 lg:order-2 lg:col-span-7 bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
+            <div className="order-1 lg:order-2 lg:col-span-7 bg-white dark:bg-slate-900 p-6 sm:p-8 md:p-10 flex flex-col justify-between animate-in slide-in-from-right-4 duration-600 ease-out delay-100">
               <div>
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200/70 dark:border-indigo-800/50 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200/70 dark:border-indigo-800/50 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] animate-in fade-in duration-400 ease-out delay-200">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
@@ -192,13 +194,13 @@ export function AuthGate({ children }: AuthGateProps) {
                     <span>256-Bit Cloud Sync</span>
                   </div>
 
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in duration-400 ease-out delay-250">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Mobile & Desktop Ready
                   </span>
                 </div>
 
-                <div className="mb-6">
+                <div className="mb-6 animate-in slide-in-from-bottom-4 duration-500 ease-out delay-300">
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                     Welcome to Paisa Pulse
                   </h1>
@@ -212,7 +214,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 {authError && (
                   <div
                     role="alert"
-                    className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5"
+                    className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-300 ease-out"
                   >
                     <span className="text-sm shrink-0">⚠️</span>
                     <div className="flex-1 leading-relaxed">
@@ -233,7 +235,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 )}
 
                 {/* 3D Tactile Google Sign-In Button */}
-                <div className="space-y-3">
+                <div className="space-y-3 animate-in fade-in duration-500 ease-out delay-400">
                   <button
                     type="button"
                     onClick={() => handleSignIn(false)}
@@ -307,7 +309,7 @@ export function AuthGate({ children }: AuthGateProps) {
               </div>
 
               {/* Quick 3D Feature Mini-Pills */}
-              <div className="grid grid-cols-3 gap-2 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+              <div className="grid grid-cols-3 gap-2 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 text-center animate-in fade-in duration-500 ease-out delay-500">
                 <div className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                   <span className="text-sm block">💬</span>
                   <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">
@@ -330,9 +332,9 @@ export function AuthGate({ children }: AuthGateProps) {
             </div>
 
             {/* LEFT COLUMN ON DESKTOP / BOTTOM ON MOBILE: 3D Vault Card Showcase */}
-            <div className="order-2 lg:order-1 lg:col-span-5 bg-gradient-to-b from-[#EEF2FC] via-[#E8EEFB] to-[#DCE5F9] dark:from-slate-900 dark:via-indigo-950/35 dark:to-slate-900 border-t lg:border-t-0 lg:border-r border-slate-200/80 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between">
+            <div className="order-2 lg:order-1 lg:col-span-5 bg-gradient-to-b from-[#EEF2FC] via-[#E8EEFB] to-[#DCE5F9] dark:from-slate-900 dark:via-indigo-950/35 dark:to-slate-900 border-t lg:border-t-0 lg:border-r border-slate-200/80 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between animate-in slide-in-from-left-4 duration-600 ease-out delay-100">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/50 shadow-xs mb-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/50 shadow-xs mb-2 animate-in fade-in duration-400 ease-out delay-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                   <span className="text-[11px] font-semibold text-indigo-950 dark:text-indigo-200">
                     Interactive 3D Telemetry
@@ -340,11 +342,11 @@ export function AuthGate({ children }: AuthGateProps) {
                 </div>
 
                 {/* 3D Tilted Vault Card Showcase */}
-                <div className="my-2 flex justify-center">
+                <div className="my-2 flex justify-center animate-in scale-in-95 duration-600 ease-out delay-300">
                   <LoginIllustration className="w-full" />
                 </div>
 
-                <div className="mt-2 text-center lg:text-left">
+                <div className="mt-2 text-center lg:text-left animate-in slide-in-from-bottom-4 duration-500 ease-out delay-400">
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                     A clearer view of your money starts here.
                   </h2>
@@ -355,7 +357,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-4 mt-4 border-t border-indigo-200/60 dark:border-slate-800 font-medium">
+              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-4 mt-4 border-t border-indigo-200/60 dark:border-slate-800 font-medium animate-in fade-in duration-400 ease-out delay-500">
                 <span>Self-directed privacy</span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -367,7 +369,7 @@ export function AuthGate({ children }: AuthGateProps) {
         </main>
 
         {/* Footer */}
-        <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-3 px-4 sm:px-8 shrink-0">
+        <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-3 px-4 sm:px-8 shrink-0 animate-in slide-in-from-bottom-4 duration-500 ease-out delay-600">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-1.5">
               <span>🛡️ Bank-grade 256-bit user isolation</span>
@@ -403,8 +405,8 @@ export function AuthGate({ children }: AuthGateProps) {
 
         {/* Policy Modals */}
         {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-            <div className="card-3d bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 ease-out">
+            <div className="card-3d bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full relative animate-in scale-in-95 duration-200 ease-out">
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}

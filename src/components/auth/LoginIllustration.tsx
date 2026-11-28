@@ -5,7 +5,7 @@ import React from "react";
 export function LoginIllustration({ className = "w-full max-w-[350px]" }: { className?: string }) {
   return (
     <div
-      className={`relative flex items-center justify-center py-6 sm:py-8 select-none ${className}`}
+      className={`relative flex items-center justify-center py-6 sm:py-8 select-none ${className} animate-in scale-in-95 duration-700 ease-out`}
       style={{ perspective: "1200px" }}
     >
       {/* Self-contained GPU-composited 3D Keyframes (Zero JS overhead) */}

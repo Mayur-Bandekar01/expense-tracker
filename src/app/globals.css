@@ -104,6 +104,17 @@ body {
     0 3px 0 0 rgba(99, 102, 241, 0.08);
 }
 
+.card-3d:active,
+.surface-card:active,
+.holo-panel:active {
+  transform: translate3d(0, 1px, 0);
+  transition-duration: 0.08s;
+  box-shadow:
+    inset 0 1px 0 0 #ffffff,
+    0 1px 2px -1px rgba(15, 23, 42, 0.1),
+    0 4px 8px -2px rgba(99, 102, 241, 0.08);
+}
+
 .dark .card-3d,
 .dark .surface-card,
 .dark .holo-panel {
@@ -126,6 +137,17 @@ body {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
     0 10px 28px -4px rgba(0, 0, 0, 0.65),
     0 3px 0 0 rgba(99, 102, 241, 0.2);
+}
+
+.dark .card-3d:active,
+.dark .surface-card:active,
+.dark .holo-panel:active {
+  transform: translate3d(0, 1px, 0);
+  transition-duration: 0.08s;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 1px 2px -1px rgba(0, 0, 0, 0.3),
+    0 4px 8px -2px rgba(129, 140, 248, 0.08);
 }
 
 .hud-brackets::before,
@@ -189,6 +211,20 @@ a:focus-visible {
   text-wrap: pretty;
 }
 
+/* ── Progress Bar Shine Animation ─────────────────────────────── */
+@keyframes progress-shine {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+.animate-progress-shine {
+  animation: progress-shine 2s ease-in-out infinite;
+}
+
 /* ── Reduced Motion Accessibility ────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -201,7 +237,10 @@ a:focus-visible {
   }
   .card-3d:hover,
   .surface-card:hover,
-  .holo-panel:hover {
+  .holo-panel:hover,
+  .card-3d:active,
+  .surface-card:active,
+  .holo-panel:active {
     transform: none !important;
   }
 }

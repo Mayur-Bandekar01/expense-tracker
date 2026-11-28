@@ -225,7 +225,7 @@ export function VirtualizedQuestLog({
       return (
         <div
           onClick={() => onSelectTransaction?.(transaction)}
-          className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-card hover:shadow-md"
+          className="group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-card hover:shadow-md animate-in fade-in duration-400 ease-out"
         >
           <div className="flex items-center gap-3.5 min-w-0">
             <div
@@ -629,8 +629,9 @@ export function VirtualizedQuestLog({
         onClose={() => setDeletingTx(null)}
         title="Delete Transaction"
         size="sm"
+        className="animate-in scale-in-95 duration-200 ease-out"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in scale-in-95 duration-200 ease-out">
           <p className="text-sm text-slate-700 dark:text-slate-200">
             Permanently delete this transaction record?
           </p>

@@ -31,7 +31,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium rounded-full select-none px-2 py-0.5",
+        "inline-flex items-center font-medium rounded-full select-none px-2 py-0.5 animate-in scale-in-95 fade-in duration-300 ease-out",
         sizeStyles,
         textWrap.body,
         variantStyles,

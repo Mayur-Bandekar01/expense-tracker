@@ -161,6 +161,7 @@ export function QuestModal({
       title={initialTransaction ? "Edit Transaction" : "Add Transaction"}
       description="Enter the details of your financial transaction."
       size="md"
+      className="animate-in scale-in-95 duration-200 ease-out"
     >
       {/* Top Tab Bar: Manual vs SMS */}
       <div className="flex items-center gap-1.5 mb-5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700">

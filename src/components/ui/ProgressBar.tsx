@@ -50,11 +50,18 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            "h-full rounded-full transition-all duration-500 ease-base",
+            "h-full rounded-full transition-all duration-500 ease-base relative overflow-hidden",
             colorClass
           )}
           style={{ transform: `translateX(-${100 - percentage}%)` }}
-        />
+        >
+          {/* Subtle animated shine overlay */}
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-progress-shine"
+            style={{ animationDuration: "2s", animationDelay: "0.5s" }}
+            aria-hidden="true"
+          />
+        </div>
       </div>
       {showLabel && (
         <div className={cn(tx("caption3"), textWrap.body, "flex justify-between items-center text-text-secondary dark:text-slate-400 mt-1 font-mono")}>

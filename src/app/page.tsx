@@ -48,23 +48,25 @@ export default function StatusWindowPage() {
 
   return (
     <>
-      <StatusWindow
-        onNavigateToQuests={() => router.push("/quests/")}
-        onNavigateToBounties={() => router.push("/bounties/")}
-        onNavigateToBudgets={() => router.push("/mana/")}
-        onSelectTransaction={(tx) => {
-          setEditingTx(tx);
-          setIsModalOpen(true);
-        }}
-        onDeleteTransaction={(id) => {
-          const target = transactions.find((t) => t.id === id) || null;
-          setDeletingTx(target);
-        }}
-        onNewQuest={() => {
-          setEditingTx(null);
-          setIsModalOpen(true);
-        }}
-      />
+      <div className="animate-in fade-in duration-500 ease-out">
+        <StatusWindow
+          onNavigateToQuests={() => router.push("/quests/")}
+          onNavigateToBounties={() => router.push("/bounties/")}
+          onNavigateToBudgets={() => router.push("/mana/")}
+          onSelectTransaction={(tx) => {
+            setEditingTx(tx);
+            setIsModalOpen(true);
+          }}
+          onDeleteTransaction={(id) => {
+            const target = transactions.find((t) => t.id === id) || null;
+            setDeletingTx(target);
+          }}
+          onNewQuest={() => {
+            setEditingTx(null);
+            setIsModalOpen(true);
+          }}
+        />
+      </div>
 
       <QuestModal
         isOpen={isModalOpen}
@@ -81,7 +83,7 @@ export default function StatusWindowPage() {
         title="Delete Transaction"
         size="sm"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in scale-in-95 duration-200 ease-out">
           <p className="text-sm text-slate-700 dark:text-slate-200">
             Permanently delete this transaction?
           </p>

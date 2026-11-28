@@ -157,18 +157,19 @@ export default function HunterArchivesPage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-          <span>⚙️</span>
-          <span>Settings & Preferences</span>
-        </h1>
-        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Manage your cloud account, companion preferences, sound effects, and data backup.
-        </p>
-      </div>
+      <div className="animate-in fade-in duration-500 ease-out">
+        {/* Page Header */}
+        <div className="mb-6 animate-in slide-in-from-top-4 duration-400 ease-out">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span>⚙️</span>
+            <span>Settings & Preferences</span>
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Manage your cloud account, companion preferences, sound effects, and data backup.
+          </p>
+        </div>
 
-      <div className="space-y-5 max-w-4xl">
+        <div className="space-y-5 max-w-4xl">
         {/* 1. Account & Cloud Sync */}
         <Card
           variant="default"
@@ -522,6 +523,7 @@ export default function HunterArchivesPage() {
           </div>
         </Card>
       </div>
+    </div>
     </>
   );
 }

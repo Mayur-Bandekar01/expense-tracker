@@ -85,32 +85,34 @@ export default function BountiesPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-            <span>🎯</span>
-            <span>Savings Goals</span>
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Track milestones for future purchases, trips, and long-term emergency reserves.
-          </p>
+      <div className="animate-in fade-in duration-500 ease-out">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-400 ease-out">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+              <span>🎯</span>
+              <span>Savings Goals</span>
+            </h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Track milestones for future purchases, trips, and long-term emergency reserves.
+            </p>
+          </div>
+
+          <Button variant="primary" onClick={handleOpenCreate} className="self-start sm:self-auto">
+            <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Savings Goal
+          </Button>
         </div>
 
-        <Button variant="primary" onClick={handleOpenCreate} className="self-start sm:self-auto">
-          <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Savings Goal
-        </Button>
+        <BountyBoard
+          goals={goals}
+          onDeposit={handleOpenDeposit}
+          onEdit={handleOpenEdit}
+          onNewBounty={handleOpenCreate}
+          onViewHistory={handleViewHistory}
+        />
       </div>
-
-      <BountyBoard
-        goals={goals}
-        onDeposit={handleOpenDeposit}
-        onEdit={handleOpenEdit}
-        onNewBounty={handleOpenCreate}
-        onViewHistory={handleViewHistory}
-      />
 
       <BountyModal
         isOpen={isModalOpen}

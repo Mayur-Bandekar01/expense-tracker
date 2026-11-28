@@ -141,6 +141,7 @@ export function BountyModal({
       title={getTitle()}
       description={getDescription()}
       size="md"
+      className="animate-in scale-in-95 duration-200 ease-out"
     >
       {/* Mode: Create or Edit Goal */}
       {(mode === "create" || mode === "edit") && (

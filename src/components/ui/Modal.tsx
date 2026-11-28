@@ -12,6 +12,7 @@ export interface ModalProps {
   maxWidth?: "sm" | "md" | "lg" | "xl";
   size?: "sm" | "md" | "lg" | "xl";
   children: React.ReactNode;
+  className?: string;
 }
 
 export function Modal({
@@ -22,6 +23,7 @@ export function Modal({
   maxWidth,
   size = "md",
   children,
+  className,
 }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -57,7 +59,8 @@ export function Modal({
         aria-modal="true"
         className={cn(
           "relative w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-modal z-10 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-500 ease-base",
-          maxWidthClass
+          maxWidthClass,
+          className
         )}
       >
         {/* Header */}

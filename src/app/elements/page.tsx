@@ -139,19 +139,20 @@ export default function ElementSpheresPage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-            <span>🏷️</span>
-            <span>Categories & Tags</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Organize expenses and income to power reports, filters, and monthly budget limits.
-          </p>
-        </div>
+      <div className="animate-in fade-in duration-500 ease-out">
+        {/* Page Header */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-400 ease-out">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+              <span>🏷️</span>
+              <span>Categories & Tags</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Organize expenses and income to power reports, filters, and monthly budget limits.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
           {safeSpheres.length === 0 && (
             <Button variant="secondary" size="sm" onClick={handleRestoreDefaults} className="flex-1 sm:flex-initial justify-center">
               Restore Defaults
@@ -343,6 +344,7 @@ export default function ElementSpheresPage() {
           </div>
         </form>
       </Modal>
+    </div>
     </>
   );
 }

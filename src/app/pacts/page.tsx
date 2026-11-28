@@ -152,19 +152,20 @@ export default function PerpetualPactsPage() {
 
   return (
     <>
-      {/* Page Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-            <span>🔁</span>
-            <span>Recurring Bills & Subscriptions</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Track subscriptions, monthly utility bills, rent, and scheduled recurring expenses.
-          </p>
-        </div>
+      <div className="animate-in fade-in duration-500 ease-out">
+        {/* Page Header */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-400 ease-out">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+              <span>🔁</span>
+              <span>Recurring Bills & Subscriptions</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Track subscriptions, monthly utility bills, rent, and scheduled recurring expenses.
+            </p>
+          </div>
 
-        <Button variant="primary" onClick={handleOpenAdd} className="w-full sm:w-auto shrink-0 justify-center shadow-sm">
+          <Button variant="primary" onClick={handleOpenAdd} className="w-full sm:w-auto shrink-0 justify-center shadow-sm">
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -387,6 +388,8 @@ export default function PerpetualPactsPage() {
           })}
         </div>
       )}
+
+      </div>
 
       {/* Confirm Payment Modal */}
       <Modal

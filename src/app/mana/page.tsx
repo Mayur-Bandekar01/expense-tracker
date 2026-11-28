@@ -268,21 +268,22 @@ export default function ManaReservesPage() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
-            <span>📊</span>
-            <span>Monthly Budgets</span>
-          </h1>
-          <p
-            suppressHydrationWarning
-            className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1"
-          >
-            Category spending limits and allocation tracking for {monthLabel}.
-          </p>
-        </div>
+      <div className="animate-in fade-in duration-500 ease-out">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-400 ease-out">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+              <span>📊</span>
+              <span>Monthly Budgets</span>
+            </h1>
+            <p
+              suppressHydrationWarning
+              className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1"
+            >
+              Category spending limits and allocation tracking for {monthLabel}.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
           <input
             type="month"
             value={selectedMonth}
@@ -614,6 +615,8 @@ export default function ManaReservesPage() {
           })}
         </div>
       )}
+
+      </div>
 
       {/* Modal 1: Edit Overall Monthly Budget */}
       <Modal
